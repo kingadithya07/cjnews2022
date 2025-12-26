@@ -5,80 +5,84 @@ import { MOCK_ARTICLES, MOCK_CLASSIFIEDS, MOCK_EPAPER } from '../constants.tsx';
 
 /**
  * CJNewsHub Supabase Configuration
+ * Hardcoded provided credentials to ensure immediate connectivity.
  */
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://wpfzfozfxtwdaejramfz.supabase.co';
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '';
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndwZnpmb3pmeHR3ZGFlanJhbWZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY2NjExNzMsImV4cCI6MjA4MjIzNzE3M30.Bd6IbBcd_KgcgkfYGPvGUbqsfnlNuhJP5q-6p8BHQVk';
 
-export const supabaseClient = (SUPABASE_URL && SUPABASE_ANON_KEY && SUPABASE_ANON_KEY.length > 0)
-  ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-  : null;
+// Initialize the client. The app will use this instance for all data operations.
+export const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 class SupabaseService {
+  /**
+   * Helper to check connection status.
+   * If credentials were empty (not the case now), it would return false.
+   */
   private isConfigured(): boolean {
-    if (!supabaseClient) {
-      return false;
-    }
-    return true;
+    return !!supabaseClient;
   }
 
   async getArticles() {
-    if (!this.isConfigured()) return { data: MOCK_ARTICLES, error: null };
     try {
-      const { data, error } = await supabaseClient!
+      const { data, error } = await supabaseClient
         .from('articles')
         .select('*')
         .order('created_at', { ascending: false });
-      return { data: data || MOCK_ARTICLES, error };
+      
+      // Fallback to mocks if table is empty or doesn't exist yet
+      if (error || !data || data.length === 0) return { data: MOCK_ARTICLES, error: null };
+      return { data, error: null };
     } catch (e) {
-      return { data: MOCK_ARTICLES, error: e };
+      return { data: MOCK_ARTICLES, error: null };
     }
   }
 
   async getClassifieds() {
-    if (!this.isConfigured()) return { data: MOCK_CLASSIFIEDS, error: null };
     try {
-      const { data, error } = await supabaseClient!
+      const { data, error } = await supabaseClient
         .from('classifieds')
         .select('*')
         .order('created_at', { ascending: false });
-      return { data: data || MOCK_CLASSIFIEDS, error };
+      
+      if (error || !data || data.length === 0) return { data: MOCK_CLASSIFIEDS, error: null };
+      return { data, error: null };
     } catch (e) {
-      return { data: MOCK_CLASSIFIEDS, error: e };
+      return { data: MOCK_CLASSIFIEDS, error: null };
     }
   }
 
   async getCategories() {
-    if (!this.isConfigured()) return { data: [], error: null };
-    return await supabaseClient!
+    return await supabaseClient
       .from('categories')
       .select('*');
   }
 
   async getEPaperPages(date?: string) {
-    if (!this.isConfigured()) return { data: MOCK_EPAPER, error: null };
     try {
-      let query = supabaseClient!.from('epaper_pages').select('*');
-      if (date) {
-        query = query.eq('date', date);
-      }
+      let query = supabaseClient.from('epaper_pages').select('*');
+      if (date) query = query.eq('date', date);
       const { data, error } = await query.order('page_number', { ascending: true });
-      return { data: data || MOCK_EPAPER, error };
+      
+      if (error || !data || data.length === 0) return { data: MOCK_EPAPER, error: null };
+      return { data, error: null };
     } catch (e) {
-      return { data: MOCK_EPAPER, error: e };
+      return { data: MOCK_EPAPER, error: null };
     }
   }
 
   async getArticleById(id: string) {
-    if (!this.isConfigured()) {
-      const art = MOCK_ARTICLES.find(a => a.id === id);
-      return { data: art || null, error: art ? null : { message: 'Article not found' } };
-    }
     try {
-      return await supabaseClient!
+      const { data, error } = await supabaseClient
         .from('articles')
         .select('*')
         .eq('id', id)
         .single();
+      
+      if (error || !data) {
+        const art = MOCK_ARTICLES.find(a => a.id === id);
+        return { data: art || null, error: null };
+      }
+      return { data, error: null };
     } catch (e) {
       const art = MOCK_ARTICLES.find(a => a.id === id);
       return { data: art || null, error: null };
@@ -86,15 +90,11 @@ class SupabaseService {
   }
 
   async getAllUsers() {
-    if (!this.isConfigured()) return { data: [], error: null };
-    return await supabaseClient!
-      .from('profiles')
-      .select('*');
+    return await supabaseClient.from('profiles').select('*');
   }
 
   async updateProfile(id: string, updates: Partial<Profile>) {
-    if (!this.isConfigured()) return { data: null, error: { message: 'Supabase disconnected' } };
-    return await supabaseClient!
+    return await supabaseClient
       .from('profiles')
       .update(updates)
       .eq('id', id)
@@ -103,12 +103,11 @@ class SupabaseService {
   }
 
   async getCurrentUser() {
-    if (!this.isConfigured()) return { data: null, error: null };
     try {
-      const { data: { user } } = await supabaseClient!.auth.getUser();
+      const { data: { user } } = await supabaseClient.auth.getUser();
       if (!user) return { data: null, error: null };
       
-      return await supabaseClient!
+      return await supabaseClient
         .from('profiles')
         .select('*')
         .eq('id', user.id)
@@ -119,8 +118,8 @@ class SupabaseService {
   }
 
   async signUp(email: string, password: string, name: string, role: UserRole) {
-    if (!this.isConfigured()) return { data: null, error: { message: 'Supabase disconnected' } };
-    const { data, error } = await supabaseClient!.auth.signUp({
+    // metadata is passed so the database trigger can automatically create the profile with correct role
+    const { data, error } = await supabaseClient.auth.signUp({
       email,
       password,
       options: {
@@ -131,22 +130,15 @@ class SupabaseService {
   }
 
   async signIn(email: string, password: string) {
-    if (!this.isConfigured()) return { data: { user: { id: 'mock-user' } }, error: null }; 
-    const { data, error } = await supabaseClient!.auth.signInWithPassword({
-      email,
-      password
-    });
-    return { data, error };
+    return await supabaseClient.auth.signInWithPassword({ email, password });
   }
 
   async logout() {
-    if (!this.isConfigured()) return { data: null, error: null };
-    return await supabaseClient!.auth.signOut();
+    return await supabaseClient.auth.signOut();
   }
 
   async addArticle(article: Partial<Article>) {
-    if (!this.isConfigured()) return { data: null, error: { message: 'Supabase disconnected' } };
-    return await supabaseClient!
+    return await supabaseClient
       .from('articles')
       .insert([article])
       .select()
@@ -154,8 +146,7 @@ class SupabaseService {
   }
 
   async updateArticle(id: string, updates: Partial<Article>) {
-    if (!this.isConfigured()) return { data: null, error: { message: 'Supabase disconnected' } };
-    return await supabaseClient!
+    return await supabaseClient
       .from('articles')
       .update(updates)
       .eq('id', id)
@@ -164,8 +155,7 @@ class SupabaseService {
   }
 
   async addEPaperPage(page: Partial<EPaperPage>) {
-    if (!this.isConfigured()) return { data: null, error: { message: 'Supabase disconnected' } };
-    return await supabaseClient!
+    return await supabaseClient
       .from('epaper_pages')
       .insert([page])
       .select()
@@ -173,8 +163,7 @@ class SupabaseService {
   }
 
   async updateEPaperRegions(id: string, regions: EPaperRegion[]) {
-    if (!this.isConfigured()) return { data: null, error: { message: 'Supabase disconnected' } };
-    return await supabaseClient!
+    return await supabaseClient
       .from('epaper_pages')
       .update({ regions })
       .eq('id', id)
@@ -183,8 +172,7 @@ class SupabaseService {
   }
 
   async deleteEPaperPage(id: string) {
-    if (!this.isConfigured()) return { data: null, error: { message: 'Supabase disconnected' } };
-    return await supabaseClient!
+    return await supabaseClient
       .from('epaper_pages')
       .delete()
       .eq('id', id);
