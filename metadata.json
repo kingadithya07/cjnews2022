@@ -1,5 +1,7 @@
 {
   "name": "CJNewsHub",
   "description": "A modern, full-featured news portal with role-based access, featured sliders, trending news, and classifieds, optimized for desktop and mobile.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [
+    "camera"
+  ]
 }
