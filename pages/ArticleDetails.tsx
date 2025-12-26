@@ -1,9 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { supabase } from '../services/supabaseClient';
-import { Article } from '../types';
-import NewsCard from '../components/NewsCard';
+import { supabase } from '../services/supabaseClient.ts';
+import { Article } from '../types.ts';
+import NewsCard from '../components/NewsCard.tsx';
 
 const ArticleDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();

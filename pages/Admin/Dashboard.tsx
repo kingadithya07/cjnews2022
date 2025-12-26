@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { supabase } from '../../services/supabaseClient';
-import { Article, UserRole, Profile, Category, EPaperPage, EPaperRegion } from '../../types';
+import { supabase } from '../../services/supabaseClient.ts';
+import { Article, UserRole, Profile, Category, EPaperPage, EPaperRegion } from '../../types.ts';
 import Cropper from 'cropperjs';
 
 const Dashboard: React.FC = () => {

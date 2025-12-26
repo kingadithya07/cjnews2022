@@ -1,8 +1,8 @@
 
 // STATUS: STABLE – DO NOT MODIFY
 import React, { useEffect, useState } from 'react';
-import { Article } from '../types';
-import { supabase } from '../services/supabaseClient';
+import { Article } from '../types.ts';
+import { supabase } from '../services/supabaseClient.ts';
 
 const BreakingTicker: React.FC = () => {
   const [news, setNews] = useState<Article[]>([]);

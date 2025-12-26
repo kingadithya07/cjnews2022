@@ -1,8 +1,8 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../../services/supabaseClient';
-import { UserRole } from '../../types';
+import { supabase } from '../../services/supabaseClient.ts';
+import { UserRole } from '../../types.ts';
 
 const Register: React.FC = () => {
   const [name, setName] = useState('');

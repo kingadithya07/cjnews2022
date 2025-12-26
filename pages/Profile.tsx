@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../services/supabaseClient';
-import { Profile, UserRole } from '../types';
+import { supabase } from '../services/supabaseClient.ts';
+import { Profile, UserRole } from '../types.ts';
 
 const ProfilePage: React.FC = () => {
   const [user, setUser] = useState<Profile | null>(null);
@@ -92,7 +92,7 @@ const ProfilePage: React.FC = () => {
                 <button 
                   onClick={handleUpdate}
                   disabled={saving}
-                  className="bg-gray-900 text-white px-10 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-red-600 transition-all shadow-xl shadow-gray-900/20 disabled:opacity-50 active:scale-95"
+                  className="bg-gray-900 text-white px-10 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-red-600 transition-all shadow-xl shadow-red-600/20 disabled:opacity-50 active:scale-95"
                 >
                   {saving ? 'Synchronizing...' : 'Update Profile'}
                 </button>

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Article } from '../types';
+import { Article } from '../types.ts';
 
 interface HeroSliderProps {
   articles: Article[];
