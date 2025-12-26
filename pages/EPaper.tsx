@@ -35,7 +35,7 @@ const EPaper: React.FC = () => {
       const cropper = new Cropper(cropImageRef.current, {
         viewMode: 1,
         dragMode: 'move',
-        autoCropArea: clippingRegion ? 0.8 : 0.5,
+        autoCropArea: 0.8,
         restore: false,
         guides: true,
         center: true,
@@ -43,13 +43,26 @@ const EPaper: React.FC = () => {
         cropBoxMovable: true,
         cropBoxResizable: true,
         toggleDragModeOnDblclick: false,
-      } as any);
+        ready() {
+          if (clippingRegion) {
+            const containerData = cropper.getContainerData();
+            const canvasData = cropper.getCanvasData();
+            
+            // Calculate coordinates based on percentages
+            const width = (clippingRegion.width / 100) * canvasData.naturalWidth;
+            const height = (clippingRegion.height / 100) * canvasData.naturalHeight;
+            const left = (clippingRegion.x / 100) * canvasData.naturalWidth;
+            const top = (clippingRegion.y / 100) * canvasData.naturalHeight;
 
-      // If a region was passed, pre-set the crop box to that region (simplified)
-      if (clippingRegion) {
-        // CropperJS setCropBoxData uses pixels, converting % to pixels is complex here
-        // We'll let the user adjust for now, but focus the area
-      }
+            cropper.setCropBoxData({
+              left: left * (canvasData.width / canvasData.naturalWidth) + canvasData.left,
+              top: top * (canvasData.height / canvasData.naturalHeight) + canvasData.top,
+              width: width * (canvasData.width / canvasData.naturalWidth),
+              height: height * (canvasData.height / canvasData.naturalHeight)
+            });
+          }
+        }
+      } as any);
 
       setCropperInstance(cropper);
       return () => cropper.destroy();
@@ -57,13 +70,46 @@ const EPaper: React.FC = () => {
   }, [isClipModalOpen, clippingRegion]);
 
   const handleDownloadClip = () => {
-    if (!cropperInstance) return;
-    const canvas = (cropperInstance as any).getCroppedCanvas();
-    const link = document.createElement('a');
-    link.download = `cjnewshub-clip-${selectedDate}-p${currentPage.page_number}.png`;
-    link.href = canvas.toDataURL('image/png');
-    link.click();
-    setIsClipModalOpen(false);
+    if (!cropperInstance || !currentPage) return;
+    
+    const croppedCanvas = (cropperInstance as any).getCroppedCanvas();
+    if (!croppedCanvas) return;
+
+    // Create a NEW canvas with a watermark strip at the bottom
+    const stripHeight = 40;
+    const finalCanvas = document.createElement('canvas');
+    finalCanvas.width = croppedCanvas.width;
+    finalCanvas.height = croppedCanvas.height + stripHeight;
+    const ctx = finalCanvas.getContext('2d');
+
+    if (ctx) {
+      // 1. Draw the cropped image
+      ctx.drawImage(croppedCanvas, 0, 0);
+
+      // 2. Draw the strip background
+      ctx.fillStyle = '#111827'; // Tailwind gray-900
+      ctx.fillRect(0, croppedCanvas.height, finalCanvas.width, stripHeight);
+
+      // 3. Draw Watermark Text
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 12px Inter, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('CJNEWS HUB DIGITAL ARCHIVE', 15, croppedCanvas.height + 25);
+
+      // 4. Draw Date and Page
+      ctx.fillStyle = '#ef4444'; // Tailwind red-500
+      ctx.textAlign = 'right';
+      ctx.font = 'bold 10px Inter, sans-serif';
+      const infoText = `${selectedDate} | Page ${currentPage.page_number} | cjnewshub.com`;
+      ctx.fillText(infoText.toUpperCase(), finalCanvas.width - 15, croppedCanvas.height + 25);
+
+      // 5. Download
+      const link = document.createElement('a');
+      link.download = `cjnewshub-clip-${selectedDate}-p${currentPage.page_number}.png`;
+      link.href = finalCanvas.toDataURL('image/png');
+      link.click();
+      setIsClipModalOpen(false);
+    }
   };
 
   const handleFreeCrop = () => {
@@ -128,22 +174,22 @@ const EPaper: React.FC = () => {
                         height: `${region.height}%`
                       }}
                     >
-                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover/region:opacity-100 transition-all transform scale-90 group-hover/region:scale-100 bg-gray-900/95 backdrop-blur-xl p-4 rounded-3xl shadow-2xl min-w-[200px] z-20 pointer-events-auto flex flex-col gap-2 border border-white/10">
+                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover/region:opacity-100 transition-all transform scale-90 group-hover/region:scale-100 bg-gray-900/95 backdrop-blur-xl p-4 rounded-3xl shadow-2xl min-w-[220px] z-20 pointer-events-auto flex flex-col gap-2 border border-white/10">
                         <p className="text-[10px] font-black uppercase text-white tracking-widest text-center mb-1 line-clamp-2">{region.title || 'Interactive Spot'}</p>
                         <div className="grid grid-cols-1 gap-2">
                           {region.articleId && (
                             <button 
                               onClick={() => navigate(`/article/${region.articleId}`)}
-                              className="w-full py-2 px-4 bg-red-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-700 transition-colors"
+                              className="w-full py-2.5 px-4 bg-red-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-700 transition-colors shadow-lg"
                             >
                               Read Full Story
                             </button>
                           )}
                           <button 
                             onClick={() => { setClippingRegion(region); setIsClipModalOpen(true); }}
-                            className="w-full py-2 px-4 bg-white/10 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-white/20 transition-colors border border-white/10"
+                            className="w-full py-2.5 px-4 bg-white text-gray-900 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-100 transition-colors border border-gray-100 shadow-lg"
                           >
-                            Crop & Share
+                            Capture This Area
                           </button>
                         </div>
                       </div>

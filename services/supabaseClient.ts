@@ -196,14 +196,17 @@ class SupabaseService {
 
   async updateEPaperRegions(id: string, regions: EPaperRegion[]) {
     if (!this.isValidUUID(id)) {
-       return { error: { message: "Mock E-Paper archive cannot be modified on the server. Please add a real page via the Dashboard first." } };
+       return { error: { message: "Mock E-Paper archive cannot be modified on the server." } };
     }
-    return await supabaseClient
+    const { data, error } = await supabaseClient
       .from('epaper_pages')
       .update({ regions })
       .eq('id', id)
-      .select()
-      .single();
+      .select();
+    
+    if (error) return { data: null, error };
+    if (!data || data.length === 0) return { data: null, error: { message: "Target record not found." } };
+    return { data: data[0], error: null };
   }
 
   async deleteEPaperPage(id: string) {
