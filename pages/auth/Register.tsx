@@ -7,15 +7,36 @@ import { UserRole } from '../../types.ts';
 const Register: React.FC = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [role, setRole] = useState<UserRole>(UserRole.READER);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters");
+      return;
+    }
+
     setLoading(true);
-    const { data } = await supabase.signUp(email, name, role);
+    const { data, error: regError } = await supabase.signUp(email, password, name, role);
     setLoading(false);
+
+    if (regError) {
+      setError(regError.message);
+      return;
+    }
+
     if (data) {
       navigate('/');
       window.location.reload();
@@ -31,6 +52,12 @@ const Register: React.FC = () => {
           </h2>
           <p className="text-gray-400 text-sm">Join the CJNewsHub community today</p>
         </div>
+
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 text-red-600 text-xs font-bold rounded-xl border border-red-100 uppercase tracking-widest">
+            {error}
+          </div>
+        )}
 
         <form onSubmit={handleRegister} className="space-y-5">
           <div>
@@ -55,6 +82,32 @@ const Register: React.FC = () => {
               onChange={(e) => setEmail(e.target.value)}
             />
           </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Password</label>
+              <input 
+                type="password" 
+                required
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-red-600 outline-none transition-all"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Confirm Password</label>
+              <input 
+                type="password" 
+                required
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-red-600 outline-none transition-all"
+                placeholder="••••••••"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+              />
+            </div>
+          </div>
+
           <div>
             <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Select Your Role</label>
             <div className="grid grid-cols-2 gap-3">
@@ -69,12 +122,16 @@ const Register: React.FC = () => {
                 </button>
               ))}
             </div>
+            <p className="mt-2 text-[9px] text-gray-400 font-medium italic">
+              Note: Staff roles (Editor, Admin) may require additional internal verification.
+            </p>
           </div>
+
           <div className="pt-4">
             <button 
               type="submit" 
               disabled={loading}
-              className="w-full bg-gray-900 text-white py-4 rounded-xl font-black uppercase tracking-[0.2em] text-xs hover:bg-red-600 transition-all shadow-lg"
+              className="w-full bg-gray-900 text-white py-4 rounded-xl font-black uppercase tracking-[0.2em] text-xs hover:bg-red-600 transition-all shadow-lg active:scale-95"
             >
               {loading ? 'Creating Account...' : 'Join Now'}
             </button>

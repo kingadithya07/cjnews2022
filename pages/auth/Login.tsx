@@ -7,14 +7,21 @@ const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     setLoading(true);
-    const { data, error } = await supabase.signIn(email);
+    const { data, error: loginError } = await supabase.signIn(email, password);
     setLoading(false);
     
+    if (loginError) {
+      setError(loginError.message);
+      return;
+    }
+
     if (data) {
       navigate('/');
       window.location.reload(); // Refresh to update header state
@@ -30,6 +37,12 @@ const Login: React.FC = () => {
           </h2>
           <p className="text-gray-400 text-sm">Log in to your CJNewsHub account</p>
         </div>
+
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 text-red-600 text-xs font-bold rounded-xl border border-red-100 uppercase tracking-widest">
+            {error}
+          </div>
+        )}
 
         <form onSubmit={handleLogin} className="space-y-6">
           <div>

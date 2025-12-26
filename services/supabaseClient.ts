@@ -5,28 +5,17 @@ import { MOCK_ARTICLES, MOCK_CLASSIFIEDS, MOCK_EPAPER } from '../constants.tsx';
 
 /**
  * CJNewsHub Supabase Configuration
- * Dynamically handles environment-based initialization with the provided project URL.
  */
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://wpfzfozfxtwdaejramfz.supabase.co';
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '';
 
-// Safely initialize the client only if both URL and Key are present and valid.
-// This prevents the "Uncaught Error: supabaseUrl is required" runtime crash.
 export const supabaseClient = (SUPABASE_URL && SUPABASE_ANON_KEY && SUPABASE_ANON_KEY.length > 0)
   ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
   : null;
 
 class SupabaseService {
-  /**
-   * Internal check to see if Supabase is connected.
-   * If false, the service will return mock data to keep the app functional for previews.
-   */
   private isConfigured(): boolean {
     if (!supabaseClient) {
-      if (!window.localStorage.getItem('supabase_warned')) {
-        console.warn("Supabase Anon Key is missing. CJNewsHub is running in 'Offline/Mock Mode'. To enable live features, please provide SUPABASE_ANON_KEY in your environment.");
-        window.localStorage.setItem('supabase_warned', 'true');
-      }
       return false;
     }
     return true;
@@ -129,11 +118,11 @@ class SupabaseService {
     }
   }
 
-  async signUp(email: string, name: string, role: UserRole) {
+  async signUp(email: string, password: string, name: string, role: UserRole) {
     if (!this.isConfigured()) return { data: null, error: { message: 'Supabase disconnected' } };
     const { data, error } = await supabaseClient!.auth.signUp({
       email,
-      password: 'temporaryPassword123!', 
+      password,
       options: {
         data: { name, role }
       }
@@ -141,11 +130,11 @@ class SupabaseService {
     return { data, error };
   }
 
-  async signIn(email: string) {
-    if (!this.isConfigured()) return { data: { user: { id: 'mock-user' } }, error: null }; // Mock login
+  async signIn(email: string, password: string) {
+    if (!this.isConfigured()) return { data: { user: { id: 'mock-user' } }, error: null }; 
     const { data, error } = await supabaseClient!.auth.signInWithPassword({
       email,
-      password: 'temporaryPassword123!' 
+      password
     });
     return { data, error };
   }
