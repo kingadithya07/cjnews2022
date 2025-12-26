@@ -1,6 +1,6 @@
 
 import { createClient } from '@supabase/supabase-js';
-import { Article, Profile, UserRole, Classified, EPaperPage, EPaperRegion } from '../types.ts';
+import { Article, Profile, UserRole, Classified, EPaperPage, EPaperRegion, Category } from '../types.ts';
 import { MOCK_ARTICLES, MOCK_CLASSIFIEDS, MOCK_EPAPER } from '../constants.tsx';
 
 /**
@@ -12,10 +12,6 @@ const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIs
 export const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 class SupabaseService {
-  /**
-   * Maps usernames to internal system emails to satisfy Supabase Auth requirements.
-   * This is hidden from the end user.
-   */
   private usernameToEmail(username: string): string {
     const cleanUsername = username.toLowerCase().trim().replace(/[^a-z0-9_]/g, '');
     return `${cleanUsername}@cjnewshub.internal`;
@@ -52,7 +48,19 @@ class SupabaseService {
   async getCategories() {
     return await supabaseClient
       .from('categories')
-      .select('*');
+      .select('*')
+      .order('name', { ascending: true });
+  }
+
+  async saveCategory(category: Partial<Category>) {
+    if (category.id) {
+      return await supabaseClient.from('categories').update(category).eq('id', category.id);
+    }
+    return await supabaseClient.from('categories').insert([category]);
+  }
+
+  async deleteCategory(id: string) {
+    return await supabaseClient.from('categories').delete().eq('id', id);
   }
 
   async getEPaperPages(date?: string) {
@@ -132,11 +140,7 @@ class SupabaseService {
       email,
       password,
       options: {
-        data: { 
-          name, 
-          role, 
-          username: username.toLowerCase().trim() 
-        }
+        data: { name, role, username: username.toLowerCase().trim() }
       }
     });
     return { data, error };
@@ -190,6 +194,14 @@ class SupabaseService {
       .from('epaper_pages')
       .delete()
       .eq('id', id);
+  }
+
+  async getSystemSettings() {
+    return await supabaseClient.from('system_settings').select('*');
+  }
+
+  async updateSystemSetting(key: string, value: any) {
+    return await supabaseClient.from('system_settings').upsert({ key, value, updated_at: new Date().toISOString() });
   }
 }
 
