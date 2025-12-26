@@ -12,6 +12,7 @@ export interface Profile {
   email: string;
   role: UserRole;
   avatar?: string;
+  is_verified: boolean;
 }
 
 export interface Article {
