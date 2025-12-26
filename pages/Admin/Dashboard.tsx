@@ -51,12 +51,14 @@ const Dashboard: React.FC = () => {
   const [user, setUser] = useState<Profile | null>(null);
   const [activeTab, setActiveTab] = useState('articles');
   const [loading, setLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   
   // Clipping Engine State
   const [isClipping, setIsClipping] = useState(false);
   const [clippingPage, setClippingPage] = useState<EPaperPage | null>(null);
   const [cropperInstance, setCropperInstance] = useState<Cropper | null>(null);
   const [linkedArticleId, setLinkedArticleId] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
   const cropperImageRef = useRef<HTMLImageElement>(null);
 
   // Taxonomy State
@@ -93,29 +95,44 @@ const Dashboard: React.FC = () => {
     setClippingPage(page);
     setIsClipping(true);
     setLinkedArticleId('');
+    setSearchTerm('');
   };
 
   useEffect(() => {
     if (isClipping && cropperImageRef.current && clippingPage) {
-      const cropper = new Cropper(cropperImageRef.current, {
-        dragMode: 'crop',
-        autoCropArea: 0.5,
-        restore: false,
-        guides: true,
-        center: true,
-        highlight: true,
-        cropBoxMovable: true,
-        cropBoxResizable: true,
-        toggleDragModeOnDblclick: false,
-      } as any);
-      setCropperInstance(cropper);
-      return () => cropper.destroy();
+      // Ensure image is loaded before initializing cropper
+      const initCropper = () => {
+        const cropper = new Cropper(cropperImageRef.current!, {
+          dragMode: 'crop',
+          autoCropArea: 0.5,
+          restore: false,
+          guides: true,
+          center: true,
+          highlight: true,
+          cropBoxMovable: true,
+          cropBoxResizable: true,
+          toggleDragModeOnDblclick: false,
+          viewMode: 1, // Restrict the crop box to not exceed the size of the canvas
+        } as any);
+        setCropperInstance(cropper);
+      };
+
+      if (cropperImageRef.current.complete) {
+        initCropper();
+      } else {
+        cropperImageRef.current.onload = initCropper;
+      }
+
+      return () => {
+        if (cropperInstance) cropperInstance.destroy();
+      };
     }
-  }, [isClipping, clippingPage]);
+  }, [isClipping, clippingPage?.id]);
 
   const handleSaveRegion = async () => {
     if (!cropperInstance || !clippingPage) return;
     
+    setIsSaving(true);
     const data = (cropperInstance as any).getData();
     const canvas = (cropperInstance as any).getCanvasData();
     
@@ -125,15 +142,37 @@ const Dashboard: React.FC = () => {
       y: (data.y / canvas.naturalHeight) * 100,
       width: (data.width / canvas.naturalWidth) * 100,
       height: (data.height / canvas.naturalHeight) * 100,
-      articleId: linkedArticleId,
-      title: articles.find(a => a.id === linkedArticleId)?.title || 'Story Clipping'
+      articleId: linkedArticleId || undefined,
+      title: articles.find(a => a.id === linkedArticleId)?.title || 'Manual Clip'
     };
 
     const updatedRegions = [...(clippingPage.regions || []), region];
-    await supabase.updateEPaperRegions(clippingPage.id, updatedRegions);
+    const { error } = await supabase.updateEPaperRegions(clippingPage.id, updatedRegions);
     
-    setIsClipping(false);
-    refreshData();
+    setIsSaving(false);
+    if (error) {
+      alert("Error saving hotspot: " + error.message);
+    } else {
+      setClippingPage({ ...clippingPage, regions: updatedRegions });
+      setLinkedArticleId('');
+      // We keep the modal open to add more regions, but refresh background data
+      refreshData();
+    }
+  };
+
+  const handleDeleteRegion = async (regionId: string) => {
+    if (!clippingPage) return;
+    if (!confirm('Permanently remove this hotspot?')) return;
+
+    setIsSaving(true);
+    const updatedRegions = (clippingPage.regions || []).filter(r => r.id !== regionId);
+    const { error } = await supabase.updateEPaperRegions(clippingPage.id, updatedRegions);
+    
+    setIsSaving(false);
+    if (!error) {
+      setClippingPage({ ...clippingPage, regions: updatedRegions });
+      refreshData();
+    }
   };
 
   const handleOpenEditor = (article?: Article) => {
@@ -165,6 +204,11 @@ const Dashboard: React.FC = () => {
     setIsEditingTaxonomy(false);
     refreshData();
   };
+
+  const filteredArticles = articles.filter(a => 
+    a.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    a.category.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   if (!user || ![UserRole.ADMIN, UserRole.EDITOR, UserRole.PUBLISHER].includes(user.role)) {
     return (
@@ -410,7 +454,7 @@ const Dashboard: React.FC = () => {
       {isClipping && clippingPage && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-gray-900/95 backdrop-blur-xl" onClick={() => setIsClipping(false)}></div>
-          <div className="relative bg-white w-full max-w-6xl h-full max-h-[90vh] rounded-[3.5rem] shadow-2xl overflow-hidden flex flex-col">
+          <div className="relative bg-white w-full max-w-7xl h-full max-h-[95vh] rounded-[3.5rem] shadow-2xl overflow-hidden flex flex-col">
             <div className="px-12 py-8 border-b border-gray-100 flex justify-between items-center bg-white z-10">
               <div>
                 <h2 className="text-2xl font-black uppercase tracking-tighter">Interaction <span className="text-red-600">Mapper</span></h2>
@@ -419,41 +463,95 @@ const Dashboard: React.FC = () => {
               <button onClick={() => setIsClipping(false)} className="p-4 bg-gray-50 hover:bg-red-50 text-gray-400 hover:text-red-600 rounded-full transition-all border border-gray-100"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" strokeWidth="3" strokeLinecap="round"/></svg></button>
             </div>
             
-            <div className="flex-grow overflow-hidden grid grid-cols-1 lg:grid-cols-4">
-              <div className="lg:col-span-3 bg-gray-100 flex items-center justify-center p-12 overflow-hidden relative border-r border-gray-100">
-                <div className="w-full h-full max-w-full max-h-full shadow-2xl rounded-lg overflow-hidden border-8 border-white bg-white">
+            <div className="flex-grow overflow-hidden grid grid-cols-1 lg:grid-cols-12">
+              <div className="lg:col-span-8 bg-gray-100 flex items-center justify-center p-12 overflow-hidden relative border-r border-gray-100">
+                <div className="w-full h-full max-w-full max-h-full shadow-2xl rounded-lg overflow-hidden border-8 border-white bg-white relative">
                   <img ref={cropperImageRef} src={clippingPage.image_url} alt="" className="max-w-full" />
+                  
+                  {/* OVERLAY EXISTING REGIONS VISUALLY */}
+                  {clippingPage.regions?.map((r) => (
+                    <div 
+                      key={r.id}
+                      className="absolute border border-red-600 bg-red-600/10 pointer-events-none z-10"
+                      style={{
+                        left: `${r.x}%`,
+                        top: `${r.y}%`,
+                        width: `${r.width}%`,
+                        height: `${r.height}%`
+                      }}
+                    >
+                       <span className="absolute -top-6 left-0 bg-red-600 text-white text-[8px] font-black uppercase px-2 py-1 rounded truncate max-w-[150px] shadow-lg">
+                         {r.title}
+                       </span>
+                    </div>
+                  ))}
                 </div>
               </div>
               
-              <div className="p-12 bg-white flex flex-col justify-between">
-                <div className="space-y-10">
-                  <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-4 ml-1">Linked News Asset</label>
-                    <select 
-                      className="w-full px-6 py-5 bg-gray-50 border border-gray-100 rounded-3xl outline-none focus:ring-4 focus:ring-red-600/10 focus:border-red-600 font-bold text-xs transition-all shadow-inner"
-                      value={linkedArticleId}
-                      onChange={e => setLinkedArticleId(e.target.value)}
-                    >
-                      <option value="">Manual Clipping Label Only</option>
-                      {articles.map(art => <option key={art.id} value={art.id}>{art.title}</option>)}
-                    </select>
-                  </div>
-                  
-                  <div className="bg-red-50 p-8 rounded-[2.5rem] border border-red-100">
-                    <div className="flex items-center space-x-3 mb-4">
-                       <div className="w-2 h-2 rounded-full bg-red-600 animate-pulse"></div>
-                       <p className="text-[11px] font-black uppercase text-red-600 tracking-widest">Mapping Intelligence</p>
+              <div className="lg:col-span-4 p-8 bg-white flex flex-col h-full overflow-hidden">
+                <div className="flex-grow overflow-y-auto space-y-8 pr-2">
+                  <div className="space-y-4">
+                    <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Link News Asset</label>
+                    <div className="relative">
+                       <input 
+                         type="text" 
+                         className="w-full px-5 py-3 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-4 focus:ring-red-600/10 mb-2 font-bold text-xs"
+                         placeholder="Search articles..."
+                         value={searchTerm}
+                         onChange={e => setSearchTerm(e.target.value)}
+                       />
+                       <div className="max-h-[180px] overflow-y-auto bg-white border border-gray-100 rounded-2xl shadow-inner p-1">
+                          {filteredArticles.length > 0 ? filteredArticles.map(art => (
+                            <button 
+                              key={art.id}
+                              onClick={() => setLinkedArticleId(art.id)}
+                              className={`w-full text-left px-4 py-3 rounded-xl transition-all flex items-center justify-between group ${linkedArticleId === art.id ? 'bg-red-600 text-white' : 'hover:bg-gray-50'}`}
+                            >
+                               <div className="flex-1 min-w-0">
+                                  <p className={`text-[11px] font-black uppercase truncate ${linkedArticleId === art.id ? 'text-white' : 'text-gray-900'}`}>{art.title}</p>
+                                  <p className={`text-[8px] font-bold uppercase tracking-widest ${linkedArticleId === art.id ? 'text-white/60' : 'text-gray-400'}`}>{art.category}</p>
+                               </div>
+                               {linkedArticleId === art.id && <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                            </button>
+                          )) : <p className="p-4 text-center text-[10px] text-gray-400 font-bold uppercase">No matching assets</p>}
+                       </div>
                     </div>
-                    <p className="text-[11px] text-red-900/60 font-medium leading-relaxed italic">
-                      Precisely drag the selector over the physical story. This hotspot creates a digital bridge between the E-Paper and the live report.
-                    </p>
+                  </div>
+
+                  <button 
+                    onClick={handleSaveRegion}
+                    disabled={isSaving}
+                    className="w-full py-5 bg-gray-900 text-white rounded-[2rem] font-black uppercase text-[10px] tracking-widest shadow-2xl shadow-gray-900/30 hover:bg-red-600 transition-all active:scale-95 disabled:opacity-50"
+                  >
+                    {isSaving ? 'Syncing Hotspot...' : 'Commit New Hotspot'}
+                  </button>
+
+                  <div className="pt-8 border-t border-gray-100">
+                    <h4 className="text-[11px] font-black uppercase tracking-widest text-gray-900 mb-6 flex items-center">
+                       <span className="w-4 h-0.5 bg-red-600 mr-3"></span> Current Page Hotspots
+                    </h4>
+                    <div className="space-y-3">
+                      {clippingPage.regions && clippingPage.regions.length > 0 ? clippingPage.regions.map(r => (
+                        <div key={r.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100 group">
+                           <div className="min-w-0 flex-1">
+                              <p className="text-[10px] font-black text-gray-900 uppercase truncate leading-tight">{r.title}</p>
+                              <p className="text-[8px] text-gray-400 font-bold uppercase tracking-widest mt-1">Region ID: {r.id.split('-')[1]}</p>
+                           </div>
+                           <button onClick={() => handleDeleteRegion(r.id)} className="ml-4 p-2 text-gray-300 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                           </button>
+                        </div>
+                      )) : (
+                        <div className="py-8 text-center bg-gray-50 rounded-[2rem] border border-dashed border-gray-200">
+                           <p className="text-[10px] font-bold text-gray-400 uppercase">No active hotlinks</p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-3">
-                   <button onClick={handleSaveRegion} className="w-full py-6 bg-gray-900 text-white rounded-[2rem] font-black uppercase text-[10px] tracking-widest shadow-2xl shadow-gray-900/30 hover:bg-red-600 transition-all active:scale-95">Commit Hotspot</button>
-                   <button onClick={() => setIsClipping(false)} className="w-full py-5 text-gray-400 font-black uppercase text-[9px] tracking-widest hover:text-gray-900 transition-colors">Abort Mapping</button>
+                <div className="mt-auto pt-6 border-t border-gray-100">
+                   <button onClick={() => setIsClipping(false)} className="w-full py-4 text-gray-400 font-black uppercase text-[9px] tracking-widest hover:text-gray-900 transition-colors">Finish & Exit Mapper</button>
                 </div>
               </div>
             </div>
