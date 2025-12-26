@@ -1,149 +1,204 @@
 
-// STATUS: STABLE – DO NOT MODIFY
-import { Article, Profile, UserRole, Classified, Category, Tag, ClassifiedCategory, EPaperPage, EPaperRegion } from '../types.ts';
-import { MOCK_ARTICLES, MOCK_CLASSIFIEDS, CATEGORIES, MOCK_TAGS, CLASSIFIED_CATEGORIES, MOCK_EPAPER } from '../constants.tsx';
+import { createClient } from '@supabase/supabase-js';
+import { Article, Profile, UserRole, Classified, EPaperPage, EPaperRegion } from '../types.ts';
+import { MOCK_ARTICLES, MOCK_CLASSIFIEDS, MOCK_EPAPER } from '../constants.tsx';
+
+/**
+ * CJNewsHub Supabase Configuration
+ * Dynamically handles environment-based initialization with the provided project URL.
+ */
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://wpfzfozfxtwdaejramfz.supabase.co';
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '';
+
+// Safely initialize the client only if both URL and Key are present and valid.
+// This prevents the "Uncaught Error: supabaseUrl is required" runtime crash.
+export const supabaseClient = (SUPABASE_URL && SUPABASE_ANON_KEY && SUPABASE_ANON_KEY.length > 0)
+  ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
 
 class SupabaseService {
-  private articles: Article[] = [...MOCK_ARTICLES];
-  private classifieds: Classified[] = [...MOCK_CLASSIFIEDS];
-  private categories: Category[] = [...CATEGORIES];
-  private tags: Tag[] = [...MOCK_TAGS];
-  private epaperPages: EPaperPage[] = [...MOCK_EPAPER];
-  private users: Profile[] = [
-    { id: 'user-1', name: 'John Doe', email: 'admin@cjnewshub.com', role: UserRole.ADMIN, avatar: 'https://picsum.photos/seed/admin/100/100' },
-    { id: 'user-2', name: 'Jane Smith', email: 'editor@cjnewshub.com', role: UserRole.EDITOR, avatar: 'https://picsum.photos/seed/editor/100/100' },
-    { id: 'user-3', name: 'News Reader', email: 'reader@cjnewshub.com', role: UserRole.READER, avatar: 'https://picsum.photos/seed/reader/100/100' }
-  ];
-  private currentUser: Profile | null = null;
+  /**
+   * Internal check to see if Supabase is connected.
+   * If false, the service will return mock data to keep the app functional for previews.
+   */
+  private isConfigured(): boolean {
+    if (!supabaseClient) {
+      if (!window.localStorage.getItem('supabase_warned')) {
+        console.warn("Supabase Anon Key is missing. CJNewsHub is running in 'Offline/Mock Mode'. To enable live features, please provide SUPABASE_ANON_KEY in your environment.");
+        window.localStorage.setItem('supabase_warned', 'true');
+      }
+      return false;
+    }
+    return true;
+  }
 
   async getArticles() {
-    return { data: this.articles, error: null };
+    if (!this.isConfigured()) return { data: MOCK_ARTICLES, error: null };
+    try {
+      const { data, error } = await supabaseClient!
+        .from('articles')
+        .select('*')
+        .order('created_at', { ascending: false });
+      return { data: data || MOCK_ARTICLES, error };
+    } catch (e) {
+      return { data: MOCK_ARTICLES, error: e };
+    }
   }
 
   async getClassifieds() {
-    return { data: this.classifieds, error: null };
+    if (!this.isConfigured()) return { data: MOCK_CLASSIFIEDS, error: null };
+    try {
+      const { data, error } = await supabaseClient!
+        .from('classifieds')
+        .select('*')
+        .order('created_at', { ascending: false });
+      return { data: data || MOCK_CLASSIFIEDS, error };
+    } catch (e) {
+      return { data: MOCK_CLASSIFIEDS, error: e };
+    }
   }
 
   async getCategories() {
-    return { data: this.categories, error: null };
+    if (!this.isConfigured()) return { data: [], error: null };
+    return await supabaseClient!
+      .from('categories')
+      .select('*');
   }
 
   async getEPaperPages(date?: string) {
-    let filtered = this.epaperPages;
-    if (date) {
-      filtered = this.epaperPages.filter(p => p.date === date);
+    if (!this.isConfigured()) return { data: MOCK_EPAPER, error: null };
+    try {
+      let query = supabaseClient!.from('epaper_pages').select('*');
+      if (date) {
+        query = query.eq('date', date);
+      }
+      const { data, error } = await query.order('page_number', { ascending: true });
+      return { data: data || MOCK_EPAPER, error };
+    } catch (e) {
+      return { data: MOCK_EPAPER, error: e };
     }
-    return { data: filtered.sort((a, b) => a.page_number - b.page_number), error: null };
   }
 
   async getArticleById(id: string) {
-    const article = this.articles.find(a => a.id === id);
-    return { data: article || null, error: article ? null : 'Not found' };
+    if (!this.isConfigured()) {
+      const art = MOCK_ARTICLES.find(a => a.id === id);
+      return { data: art || null, error: art ? null : { message: 'Article not found' } };
+    }
+    try {
+      return await supabaseClient!
+        .from('articles')
+        .select('*')
+        .eq('id', id)
+        .single();
+    } catch (e) {
+      const art = MOCK_ARTICLES.find(a => a.id === id);
+      return { data: art || null, error: null };
+    }
   }
 
   async getAllUsers() {
-    return { data: this.users, error: null };
+    if (!this.isConfigured()) return { data: [], error: null };
+    return await supabaseClient!
+      .from('profiles')
+      .select('*');
   }
 
   async updateProfile(id: string, updates: Partial<Profile>) {
-    const index = this.users.findIndex(u => u.id === id);
-    if (index !== -1) {
-      this.users[index] = { ...this.users[index], ...updates };
-      if (this.currentUser?.id === id) {
-        this.currentUser = this.users[index];
-      }
-      return { data: this.users[index], error: null };
-    }
-    return { error: 'User not found' };
+    if (!this.isConfigured()) return { data: null, error: { message: 'Supabase disconnected' } };
+    return await supabaseClient!
+      .from('profiles')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
   }
 
   async getCurrentUser() {
-    return { data: this.currentUser, error: null };
+    if (!this.isConfigured()) return { data: null, error: null };
+    try {
+      const { data: { user } } = await supabaseClient!.auth.getUser();
+      if (!user) return { data: null, error: null };
+      
+      return await supabaseClient!
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+    } catch (e) {
+      return { data: null, error: e };
+    }
   }
 
   async signUp(email: string, name: string, role: UserRole) {
-    const newUser: Profile = {
-      id: `user-${Date.now()}`,
-      name: name,
-      email: email,
-      role: role,
-      avatar: `https://picsum.photos/seed/${name}/100/100`
-    };
-    this.users.push(newUser);
-    this.currentUser = newUser;
-    return { data: newUser, error: null };
+    if (!this.isConfigured()) return { data: null, error: { message: 'Supabase disconnected' } };
+    const { data, error } = await supabaseClient!.auth.signUp({
+      email,
+      password: 'temporaryPassword123!', 
+      options: {
+        data: { name, role }
+      }
+    });
+    return { data, error };
   }
 
   async signIn(email: string) {
-    const existing = this.users.find(u => u.email === email);
-    if (existing) {
-      this.currentUser = existing;
-      return { data: existing, error: null };
-    }
-
-    let role = UserRole.READER;
-    if (email.includes('admin')) role = UserRole.ADMIN;
-    else if (email.includes('editor')) role = UserRole.EDITOR;
-    
-    const loggedInUser: Profile = {
-      id: `user-${Date.now()}`,
-      name: email.split('@')[0],
-      email: email,
-      role: role,
-      avatar: `https://picsum.photos/seed/${email}/100/100`
-    };
-    this.users.push(loggedInUser);
-    this.currentUser = loggedInUser;
-    return { data: loggedInUser, error: null };
+    if (!this.isConfigured()) return { data: { user: { id: 'mock-user' } }, error: null }; // Mock login
+    const { data, error } = await supabaseClient!.auth.signInWithPassword({
+      email,
+      password: 'temporaryPassword123!' 
+    });
+    return { data, error };
   }
 
   async logout() {
-    this.currentUser = null;
-    return { error: null };
+    if (!this.isConfigured()) return { data: null, error: null };
+    return await supabaseClient!.auth.signOut();
   }
 
   async addArticle(article: Partial<Article>) {
-    const newArt = { 
-      ...MOCK_ARTICLES[0], 
-      ...article, 
-      id: `art-${Date.now()}`,
-      created_at: new Date().toISOString(),
-      view_count: 0
-    } as Article;
-    this.articles = [newArt, ...this.articles];
-    return { data: newArt, error: null };
+    if (!this.isConfigured()) return { data: null, error: { message: 'Supabase disconnected' } };
+    return await supabaseClient!
+      .from('articles')
+      .insert([article])
+      .select()
+      .single();
   }
 
   async updateArticle(id: string, updates: Partial<Article>) {
-    const index = this.articles.findIndex(a => a.id === id);
-    if (index === -1) return { error: 'Article not found' };
-    this.articles[index] = { ...this.articles[index], ...updates };
-    return { data: this.articles[index], error: null };
+    if (!this.isConfigured()) return { data: null, error: { message: 'Supabase disconnected' } };
+    return await supabaseClient!
+      .from('articles')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
   }
 
   async addEPaperPage(page: Partial<EPaperPage>) {
-    const newPage: EPaperPage = {
-      id: `ep-${Date.now()}`,
-      date: page.date || new Date().toISOString().split('T')[0],
-      page_number: page.page_number || 1,
-      image_url: page.image_url || 'https://picsum.photos/seed/ep/800/1200',
-      regions: [],
-      created_at: new Date().toISOString()
-    };
-    this.epaperPages = [...this.epaperPages, newPage];
-    return { data: newPage, error: null };
+    if (!this.isConfigured()) return { data: null, error: { message: 'Supabase disconnected' } };
+    return await supabaseClient!
+      .from('epaper_pages')
+      .insert([page])
+      .select()
+      .single();
   }
 
   async updateEPaperRegions(id: string, regions: EPaperRegion[]) {
-    const index = this.epaperPages.findIndex(p => p.id === id);
-    if (index === -1) return { error: 'Page not found' };
-    this.epaperPages[index].regions = regions;
-    return { data: this.epaperPages[index], error: null };
+    if (!this.isConfigured()) return { data: null, error: { message: 'Supabase disconnected' } };
+    return await supabaseClient!
+      .from('epaper_pages')
+      .update({ regions })
+      .eq('id', id)
+      .select()
+      .single();
   }
 
   async deleteEPaperPage(id: string) {
-    this.epaperPages = this.epaperPages.filter(p => p.id !== id);
-    return { error: null };
+    if (!this.isConfigured()) return { data: null, error: { message: 'Supabase disconnected' } };
+    return await supabaseClient!
+      .from('epaper_pages')
+      .delete()
+      .eq('id', id);
   }
 }
 
