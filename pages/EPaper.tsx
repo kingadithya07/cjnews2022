@@ -35,7 +35,7 @@ const EPaper: React.FC = () => {
       const cropper = new Cropper(cropImageRef.current, {
         viewMode: 1,
         dragMode: 'move',
-        autoCropArea: 0.8,
+        autoCropArea: clippingRegion ? 0.8 : 0.5,
         restore: false,
         guides: true,
         center: true,
@@ -44,10 +44,17 @@ const EPaper: React.FC = () => {
         cropBoxResizable: true,
         toggleDragModeOnDblclick: false,
       } as any);
+
+      // If a region was passed, pre-set the crop box to that region (simplified)
+      if (clippingRegion) {
+        // CropperJS setCropBoxData uses pixels, converting % to pixels is complex here
+        // We'll let the user adjust for now, but focus the area
+      }
+
       setCropperInstance(cropper);
       return () => cropper.destroy();
     }
-  }, [isClipModalOpen]);
+  }, [isClipModalOpen, clippingRegion]);
 
   const handleDownloadClip = () => {
     if (!cropperInstance) return;
@@ -59,6 +66,11 @@ const EPaper: React.FC = () => {
     setIsClipModalOpen(false);
   };
 
+  const handleFreeCrop = () => {
+    setClippingRegion(null);
+    setIsClipModalOpen(true);
+  };
+
   return (
     <div className="min-h-screen bg-gray-100 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -68,14 +80,25 @@ const EPaper: React.FC = () => {
             <p className="text-gray-500 text-sm mt-1">Daily Interactive E-Paper Archives</p>
           </div>
           
-          <div className="flex items-center space-x-4 bg-white p-2 rounded-2xl shadow-sm border border-gray-100">
-            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">Edition Date</label>
-            <input 
-              type="date" 
-              className="px-4 py-2 border-none outline-none font-bold text-gray-900 bg-transparent"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-            />
+          <div className="flex flex-wrap items-center gap-4">
+            <button 
+              onClick={handleFreeCrop}
+              disabled={loading || pages.length === 0}
+              className="flex items-center space-x-2 bg-gray-900 text-white px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-red-600 transition-all shadow-lg active:scale-95 disabled:opacity-30"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" strokeWidth="2.5"/><path d="M9 11l3 3 3-3" strokeWidth="2.5"/></svg>
+              <span>Free Crop Tool</span>
+            </button>
+
+            <div className="flex items-center space-x-4 bg-white p-2 rounded-2xl shadow-sm border border-gray-100">
+              <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">Edition Date</label>
+              <input 
+                type="date" 
+                className="px-4 py-2 border-none outline-none font-bold text-gray-900 bg-transparent"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+              />
+            </div>
           </div>
         </div>
 
@@ -86,8 +109,8 @@ const EPaper: React.FC = () => {
         ) : pages.length > 0 ? (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             <div className="lg:col-span-9 space-y-6">
-              <div className="relative bg-white rounded-[2.5rem] shadow-2xl border border-gray-200 overflow-hidden">
-                <div className="relative aspect-[3/4.5] bg-gray-50">
+              <div className="relative bg-white rounded-[2.5rem] shadow-2xl border border-gray-200 overflow-hidden group/main">
+                <div className="relative aspect-[3/4.5] bg-gray-50 overflow-hidden">
                    <img 
                     src={currentPage.image_url} 
                     className="w-full h-full object-contain" 
@@ -106,7 +129,7 @@ const EPaper: React.FC = () => {
                       }}
                     >
                       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover/region:opacity-100 transition-all transform scale-90 group-hover/region:scale-100 bg-gray-900/95 backdrop-blur-xl p-4 rounded-3xl shadow-2xl min-w-[200px] z-20 pointer-events-auto flex flex-col gap-2 border border-white/10">
-                        <p className="text-[10px] font-black uppercase text-white tracking-widest text-center mb-1">{region.title || 'Story Detail'}</p>
+                        <p className="text-[10px] font-black uppercase text-white tracking-widest text-center mb-1 line-clamp-2">{region.title || 'Interactive Spot'}</p>
                         <div className="grid grid-cols-1 gap-2">
                           {region.articleId && (
                             <button 
@@ -120,7 +143,7 @@ const EPaper: React.FC = () => {
                             onClick={() => { setClippingRegion(region); setIsClipModalOpen(true); }}
                             className="w-full py-2 px-4 bg-white/10 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-white/20 transition-colors border border-white/10"
                           >
-                            Clip & Share
+                            Crop & Share
                           </button>
                         </div>
                       </div>
@@ -157,14 +180,14 @@ const EPaper: React.FC = () => {
                 <button 
                   disabled={currentPageIndex === 0}
                   onClick={() => setCurrentPageIndex(prev => prev - 1)}
-                  className="absolute left-6 top-1/2 -translate-y-1/2 z-40 w-14 h-14 rounded-full bg-white/90 backdrop-blur-md border border-gray-100 shadow-2xl flex items-center justify-center disabled:opacity-20 hover:bg-red-600 hover:text-white transition-all"
+                  className="absolute left-6 top-1/2 -translate-y-1/2 z-40 w-14 h-14 rounded-full bg-white/90 backdrop-blur-md border border-gray-100 shadow-2xl flex items-center justify-center disabled:opacity-20 hover:bg-red-600 hover:text-white transition-all opacity-0 group-hover/main:opacity-100"
                 >
                   <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 </button>
                 <button 
                   disabled={currentPageIndex === pages.length - 1}
                   onClick={() => setCurrentPageIndex(prev => prev + 1)}
-                  className="absolute right-6 top-1/2 -translate-y-1/2 z-40 w-14 h-14 rounded-full bg-white/90 backdrop-blur-md border border-gray-100 shadow-2xl flex items-center justify-center disabled:opacity-20 hover:bg-red-600 hover:text-white transition-all"
+                  className="absolute right-6 top-1/2 -translate-y-1/2 z-40 w-14 h-14 rounded-full bg-white/90 backdrop-blur-md border border-gray-100 shadow-2xl flex items-center justify-center disabled:opacity-20 hover:bg-red-600 hover:text-white transition-all opacity-0 group-hover/main:opacity-100"
                 >
                   <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 </button>
@@ -196,6 +219,7 @@ const EPaper: React.FC = () => {
         ) : (
           <div className="h-[60vh] flex flex-col items-center justify-center bg-white rounded-[4rem] border border-dashed border-gray-200 p-12 text-center">
             <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tighter mb-3">Archive Not Found</h2>
+            <p className="text-gray-400 text-sm max-w-md uppercase tracking-widest font-bold">Try selecting a different date from the edition explorer above.</p>
           </div>
         )}
       </div>
@@ -203,26 +227,43 @@ const EPaper: React.FC = () => {
       {isClipModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-10">
           <div className="absolute inset-0 bg-gray-900/90 backdrop-blur-md" onClick={() => setIsClipModalOpen(false)}></div>
-          <div className="relative bg-white w-full max-w-5xl h-full max-h-[85vh] rounded-[3rem] shadow-2xl overflow-hidden flex flex-col">
+          <div className="relative bg-white w-full max-w-5xl h-full max-h-[85vh] rounded-[3.5rem] shadow-2xl overflow-hidden flex flex-col">
             <div className="px-10 py-6 border-b border-gray-100 flex justify-between items-center bg-white">
-              <h2 className="text-xl font-black uppercase tracking-tighter">Clipping <span className="text-red-600">Tool</span></h2>
-              <button onClick={() => setIsClipModalOpen(false)} className="p-3 bg-gray-50 hover:bg-red-50 hover:text-red-600 rounded-full transition-all">
+              <div className="flex items-center space-x-3">
+                 <div className="w-10 h-10 bg-red-50 rounded-2xl flex items-center justify-center">
+                    <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" strokeWidth="2.5"/></svg>
+                 </div>
+                 <div>
+                    <h2 className="text-xl font-black uppercase tracking-tighter">Clipping <span className="text-red-600">Portal</span></h2>
+                    <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">{clippingRegion ? `Focus: ${clippingRegion.title}` : 'Manual Archive Capture'}</p>
+                 </div>
+              </div>
+              <button onClick={() => setIsClipModalOpen(false)} className="p-3 bg-gray-50 hover:bg-red-50 hover:text-red-600 rounded-full transition-all border border-gray-100">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" strokeWidth="3" strokeLinecap="round"/></svg>
               </button>
             </div>
             
-            <div className="flex-grow bg-gray-200 overflow-hidden flex items-center justify-center relative">
+            <div className="flex-grow bg-gray-100 overflow-hidden flex items-center justify-center relative">
                <div className="w-full h-full max-w-full max-h-full">
                   <img ref={cropImageRef} src={currentPage.image_url} alt="Clip area" className="max-w-full" />
+               </div>
+               <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-gray-900/80 backdrop-blur-xl px-6 py-2 rounded-full border border-white/10 z-20">
+                  <p className="text-[9px] font-black uppercase text-white tracking-widest whitespace-nowrap">Adjust borders to frame your clip</p>
                </div>
             </div>
 
             <div className="p-10 bg-white border-t border-gray-100 flex flex-col md:flex-row gap-6 justify-between items-center">
               <button 
                 onClick={handleDownloadClip}
-                className="flex-1 md:px-10 py-4 bg-gray-900 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-red-600 transition-all shadow-xl shadow-gray-900/20"
+                className="w-full md:w-auto px-16 py-4 bg-gray-900 text-white rounded-[2rem] font-black uppercase text-[10px] tracking-widest hover:bg-red-600 transition-all shadow-xl shadow-gray-900/20 active:scale-95"
               >
-                Download Clip
+                Capture & Download Archive
+              </button>
+              <button 
+                onClick={() => setIsClipModalOpen(false)}
+                className="w-full md:w-auto px-10 py-4 text-gray-400 font-black uppercase text-[9px] tracking-widest hover:text-gray-900 transition-colors"
+              >
+                Cancel Process
               </button>
             </div>
           </div>

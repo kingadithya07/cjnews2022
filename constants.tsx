@@ -1,6 +1,12 @@
 
 import { Category, UserRole, Tag, ClassifiedCategory, EPaperPage } from './types.ts';
 
+// Helper to generate a dummy UUID-like string
+const generateUUID = (prefix: string, index: number) => {
+  const hex = index.toString(16).padStart(12, '0');
+  return `00000000-0000-0000-0000-${prefix}${hex}`.slice(0, 36);
+};
+
 export const CATEGORIES: Category[] = [
   { id: '1', name: 'Politics', subcategories: ['Local', 'National', 'International'], article_count: 120 },
   { id: '2', name: 'Technology', subcategories: ['Gadgets', 'AI', 'Software', 'Space'], article_count: 85 },
@@ -28,7 +34,7 @@ export const CLASSIFIED_CATEGORIES: ClassifiedCategory[] = [
 ];
 
 export const MOCK_ARTICLES = Array.from({ length: 20 }, (_, i) => ({
-  id: `art-${i}`,
+  id: generateUUID('a', i),
   title: `Breaking News: ${i % 2 === 0 ? 'Major Technological Breakthrough' : 'Economic Shift Observed in Global Markets'}`,
   summary: 'This is a brief summary of the article to give readers a glimpse of the content and entice them to read more.',
   content: '<p>The full content of the article would go here. It can include multiple paragraphs, images, and other media elements.</p>',
@@ -46,7 +52,7 @@ export const MOCK_ARTICLES = Array.from({ length: 20 }, (_, i) => ({
 }));
 
 export const MOCK_CLASSIFIEDS = Array.from({ length: 8 }, (_, i) => ({
-  id: `cls-${i}`,
+  id: generateUUID('c', i),
   title: `Item for Sale ${i + 1}`,
   description: 'High quality item available at a reasonable price. Contact for more details.',
   category: CLASSIFIED_CATEGORIES[i % CLASSIFIED_CATEGORIES.length].name,
@@ -57,7 +63,7 @@ export const MOCK_CLASSIFIEDS = Array.from({ length: 8 }, (_, i) => ({
 }));
 
 export const MOCK_EPAPER: EPaperPage[] = Array.from({ length: 4 }, (_, i) => ({
-  id: `ep-${i}`,
+  id: generateUUID('e', i),
   date: new Date().toISOString().split('T')[0],
   page_number: i + 1,
   image_url: `https://picsum.photos/seed/epaper${i}/800/1200`,

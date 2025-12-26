@@ -17,6 +17,12 @@ class SupabaseService {
     return `${cleanUsername}@cjnewshub.internal`;
   }
 
+  private isValidUUID(uuid: string) {
+    const s = "" + uuid;
+    const match = s.match(/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/);
+    return match !== null;
+  }
+
   async getArticles() {
     try {
       const { data, error } = await supabaseClient
@@ -53,13 +59,14 @@ class SupabaseService {
   }
 
   async saveCategory(category: Partial<Category>) {
-    if (category.id) {
+    if (category.id && this.isValidUUID(category.id)) {
       return await supabaseClient.from('categories').update(category).eq('id', category.id);
     }
     return await supabaseClient.from('categories').insert([category]);
   }
 
   async deleteCategory(id: string) {
+    if (!this.isValidUUID(id)) return { error: { message: "Mock data cannot be deleted from server." } };
     return await supabaseClient.from('categories').delete().eq('id', id);
   }
 
@@ -78,6 +85,10 @@ class SupabaseService {
 
   async getArticleById(id: string) {
     try {
+      if (!this.isValidUUID(id)) {
+         const art = MOCK_ARTICLES.find(a => a.id === id);
+         return { data: art || null, error: null };
+      }
       const { data, error } = await supabaseClient
         .from('articles')
         .select('*')
@@ -100,6 +111,7 @@ class SupabaseService {
   }
 
   async updateProfile(id: string, updates: Partial<Profile>) {
+    if (!this.isValidUUID(id)) return { error: { message: "Mock profile cannot be updated on server." } };
     return await supabaseClient
       .from('profiles')
       .update(updates)
@@ -109,6 +121,7 @@ class SupabaseService {
   }
 
   async verifyProfile(id: string) {
+    if (!this.isValidUUID(id)) return { error: { message: "Mock profile cannot be verified." } };
     return await supabaseClient
       .from('profiles')
       .update({ is_verified: true })
@@ -164,6 +177,7 @@ class SupabaseService {
   }
 
   async updateArticle(id: string, updates: Partial<Article>) {
+    if (!this.isValidUUID(id)) return { error: { message: "Mock article cannot be updated on server." } };
     return await supabaseClient
       .from('articles')
       .update(updates)
@@ -181,6 +195,9 @@ class SupabaseService {
   }
 
   async updateEPaperRegions(id: string, regions: EPaperRegion[]) {
+    if (!this.isValidUUID(id)) {
+       return { error: { message: "Mock E-Paper archive cannot be modified on the server. Please add a real page via the Dashboard first." } };
+    }
     return await supabaseClient
       .from('epaper_pages')
       .update({ regions })
@@ -190,6 +207,7 @@ class SupabaseService {
   }
 
   async deleteEPaperPage(id: string) {
+    if (!this.isValidUUID(id)) return { error: { message: "Mock E-Paper page cannot be deleted." } };
     return await supabaseClient
       .from('epaper_pages')
       .delete()

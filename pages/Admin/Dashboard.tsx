@@ -58,6 +58,7 @@ const Dashboard: React.FC = () => {
   const [clippingPage, setClippingPage] = useState<EPaperPage | null>(null);
   const [cropperInstance, setCropperInstance] = useState<Cropper | null>(null);
   const [linkedArticleId, setLinkedArticleId] = useState('');
+  const [manualHotspotTitle, setManualHotspotTitle] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const cropperImageRef = useRef<HTMLImageElement>(null);
 
@@ -99,6 +100,7 @@ const Dashboard: React.FC = () => {
     setClippingPage(page);
     setIsClipping(true);
     setLinkedArticleId('');
+    setManualHotspotTitle('');
     setSearchTerm('');
   };
 
@@ -140,6 +142,9 @@ const Dashboard: React.FC = () => {
     const data = (cropperInstance as any).getData();
     const canvas = (cropperInstance as any).getCanvasData();
     
+    const articleTitle = articles.find(a => a.id === linkedArticleId)?.title;
+    const finalTitle = manualHotspotTitle || articleTitle || 'Hotlink Region';
+
     const region: EPaperRegion = {
       id: `region-${Date.now()}`,
       x: (data.x / canvas.naturalWidth) * 100,
@@ -147,7 +152,7 @@ const Dashboard: React.FC = () => {
       width: (data.width / canvas.naturalWidth) * 100,
       height: (data.height / canvas.naturalHeight) * 100,
       articleId: linkedArticleId || undefined,
-      title: articles.find(a => a.id === linkedArticleId)?.title || 'Manual Clip'
+      title: finalTitle
     };
 
     const updatedRegions = [...(clippingPage.regions || []), region];
@@ -159,6 +164,7 @@ const Dashboard: React.FC = () => {
     } else {
       setClippingPage({ ...clippingPage, regions: updatedRegions });
       setLinkedArticleId('');
+      setManualHotspotTitle('');
       // We keep the modal open to add more regions, but refresh background data
       refreshData();
     }
@@ -564,31 +570,47 @@ const Dashboard: React.FC = () => {
               
               <div className="lg:col-span-4 p-8 bg-white flex flex-col h-full overflow-hidden">
                 <div className="flex-grow overflow-y-auto space-y-8 pr-2">
-                  <div className="space-y-4">
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Link News Asset</label>
-                    <div className="relative">
-                       <input 
-                         type="text" 
-                         className="w-full px-5 py-3 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-4 focus:ring-red-600/10 mb-2 font-bold text-xs"
-                         placeholder="Search articles..."
-                         value={searchTerm}
-                         onChange={e => setSearchTerm(e.target.value)}
-                       />
-                       <div className="max-h-[180px] overflow-y-auto bg-white border border-gray-100 rounded-2xl shadow-inner p-1">
-                          {filteredArticles.length > 0 ? filteredArticles.map(art => (
-                            <button 
-                              key={art.id}
-                              onClick={() => setLinkedArticleId(art.id)}
-                              className={`w-full text-left px-4 py-3 rounded-xl transition-all flex items-center justify-between group ${linkedArticleId === art.id ? 'bg-red-600 text-white' : 'hover:bg-gray-50'}`}
-                            >
-                               <div className="flex-1 min-w-0">
-                                  <p className={`text-[11px] font-black uppercase truncate ${linkedArticleId === art.id ? 'text-white' : 'text-gray-900'}`}>{art.title}</p>
-                                  <p className={`text-[8px] font-bold uppercase tracking-widest ${linkedArticleId === art.id ? 'text-white/60' : 'text-gray-400'}`}>{art.category}</p>
-                               </div>
-                               {linkedArticleId === art.id && <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-                            </button>
-                          )) : <p className="p-4 text-center text-[10px] text-gray-400 font-bold uppercase">No matching assets</p>}
-                       </div>
+                  <div className="space-y-6">
+                    <div>
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1 mb-2">Manual Hotspot Title</label>
+                      <input 
+                        type="text" 
+                        className="w-full px-5 py-3 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-4 focus:ring-red-600/10 font-bold text-xs"
+                        placeholder="e.g. Ad Spotlight, Video Link..."
+                        value={manualHotspotTitle}
+                        onChange={e => setManualHotspotTitle(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="space-y-4">
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Link News Asset (Optional)</label>
+                      <div className="relative">
+                         <input 
+                           type="text" 
+                           className="w-full px-5 py-3 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-4 focus:ring-red-600/10 mb-2 font-bold text-xs"
+                           placeholder="Search articles..."
+                           value={searchTerm}
+                           onChange={e => setSearchTerm(e.target.value)}
+                         />
+                         <div className="max-h-[180px] overflow-y-auto bg-white border border-gray-100 rounded-2xl shadow-inner p-1">
+                            {filteredArticles.length > 0 ? filteredArticles.map(art => (
+                              <button 
+                                key={art.id}
+                                onClick={() => {
+                                  setLinkedArticleId(art.id);
+                                  if (!manualHotspotTitle) setManualHotspotTitle(art.title);
+                                }}
+                                className={`w-full text-left px-4 py-3 rounded-xl transition-all flex items-center justify-between group ${linkedArticleId === art.id ? 'bg-red-600 text-white' : 'hover:bg-gray-50'}`}
+                              >
+                                 <div className="flex-1 min-w-0">
+                                    <p className={`text-[11px] font-black uppercase truncate ${linkedArticleId === art.id ? 'text-white' : 'text-gray-900'}`}>{art.title}</p>
+                                    <p className={`text-[8px] font-bold uppercase tracking-widest ${linkedArticleId === art.id ? 'text-white/60' : 'text-gray-400'}`}>{art.category}</p>
+                                 </div>
+                                 {linkedArticleId === art.id && <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                              </button>
+                            )) : <p className="p-4 text-center text-[10px] text-gray-400 font-bold uppercase">No matching assets</p>}
+                         </div>
+                      </div>
                     </div>
                   </div>
 
