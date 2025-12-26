@@ -13,10 +13,12 @@ export const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 class SupabaseService {
   /**
-   * Internal helper to map usernames to internal system emails
+   * Maps usernames to internal system emails to satisfy Supabase Auth requirements.
+   * This is hidden from the end user.
    */
   private usernameToEmail(username: string): string {
-    return `${username.toLowerCase().trim()}@cjnewshub.local`;
+    const cleanUsername = username.toLowerCase().trim().replace(/[^a-z0-9_]/g, '');
+    return `${cleanUsername}@cjnewshub.internal`;
   }
 
   async getArticles() {
@@ -109,14 +111,16 @@ class SupabaseService {
 
   async getCurrentUser() {
     try {
-      const { data: { user } } = await supabaseClient.auth.getUser();
-      if (!user) return { data: null, error: null };
+      const { data: { user: authUser } } = await supabaseClient.auth.getUser();
+      if (!authUser) return { data: null, error: null };
       
-      return await supabaseClient
+      const { data, error } = await supabaseClient
         .from('profiles')
         .select('*')
-        .eq('id', user.id)
+        .eq('id', authUser.id)
         .single();
+      
+      return { data, error };
     } catch (e) {
       return { data: null, error: e };
     }
@@ -128,7 +132,11 @@ class SupabaseService {
       email,
       password,
       options: {
-        data: { name, role, username: username.toLowerCase().trim() }
+        data: { 
+          name, 
+          role, 
+          username: username.toLowerCase().trim() 
+        }
       }
     });
     return { data, error };
