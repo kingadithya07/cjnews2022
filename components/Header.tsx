@@ -1,9 +1,9 @@
 
 // STATUS: STABLE – DO NOT MODIFY
 import React, { useState, useEffect } from 'react';
-import { CATEGORIES } from '../constants';
-import { supabase } from '../services/supabaseClient';
-import { Profile, UserRole } from '../types';
+import { CATEGORIES } from '../constants.tsx';
+import { supabase } from '../services/supabaseClient.ts';
+import { Profile, UserRole } from '../types.ts';
 
 const Header: React.FC = () => {
   const [user, setUser] = useState<Profile | null>(null);

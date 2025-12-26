@@ -1,8 +1,8 @@
 
 import React from 'react';
-import Header from './Header';
-import Footer from './Footer';
-import BreakingTicker from './BreakingTicker';
+import Header from './Header.tsx';
+import Footer from './Footer.tsx';
+import BreakingTicker from './BreakingTicker.tsx';
 
 interface LayoutProps {
   children: React.ReactNode;

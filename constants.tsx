@@ -1,5 +1,5 @@
 
-import { Category, UserRole, Tag, ClassifiedCategory, EPaperPage } from './types';
+import { Category, UserRole, Tag, ClassifiedCategory, EPaperPage } from './types.ts';
 
 export const CATEGORIES: Category[] = [
   { id: '1', name: 'Politics', subcategories: ['Local', 'National', 'International'], article_count: 120 },
@@ -56,7 +56,6 @@ export const MOCK_CLASSIFIEDS = Array.from({ length: 8 }, (_, i) => ({
   created_at: new Date().toISOString(),
 }));
 
-// Fixed: Added missing 'regions' property to satisfy EPaperPage type requirements
 export const MOCK_EPAPER: EPaperPage[] = Array.from({ length: 4 }, (_, i) => ({
   id: `ep-${i}`,
   date: new Date().toISOString().split('T')[0],

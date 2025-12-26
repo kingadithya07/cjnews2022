@@ -1,15 +1,15 @@
 
 import React from 'react';
 import { HashRouter as Router, Routes, Route } from 'react-router-dom';
-import Layout from './components/Layout';
-import Home from './pages/Home';
-import EPaper from './pages/EPaper';
-import ArticleDetails from './pages/ArticleDetails';
-import Dashboard from './pages/Admin/Dashboard';
-import Login from './pages/auth/Login';
-import Register from './pages/auth/Register';
-import ForgotPassword from './pages/auth/ForgotPassword';
-import ProfilePage from './pages/Profile';
+import Layout from './components/Layout.tsx';
+import Home from './pages/Home.tsx';
+import EPaper from './pages/EPaper.tsx';
+import ArticleDetails from './pages/ArticleDetails.tsx';
+import Dashboard from './pages/Admin/Dashboard.tsx';
+import Login from './pages/auth/Login.tsx';
+import Register from './pages/auth/Register.tsx';
+import ForgotPassword from './pages/auth/ForgotPassword.tsx';
+import ProfilePage from './pages/Profile.tsx';
 
 const App: React.FC = () => {
   return (

@@ -1,7 +1,7 @@
 
 // STATUS: STABLE – DO NOT MODIFY
-import { Article, Profile, UserRole, Classified, Category, Tag, ClassifiedCategory, EPaperPage, EPaperRegion } from '../types';
-import { MOCK_ARTICLES, MOCK_CLASSIFIEDS, CATEGORIES, MOCK_TAGS, CLASSIFIED_CATEGORIES, MOCK_EPAPER } from '../constants';
+import { Article, Profile, UserRole, Classified, Category, Tag, ClassifiedCategory, EPaperPage, EPaperRegion } from '../types.ts';
+import { MOCK_ARTICLES, MOCK_CLASSIFIEDS, CATEGORIES, MOCK_TAGS, CLASSIFIED_CATEGORIES, MOCK_EPAPER } from '../constants.tsx';
 
 class SupabaseService {
   private articles: Article[] = [...MOCK_ARTICLES];

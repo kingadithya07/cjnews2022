@@ -1,10 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../services/supabaseClient';
-import { Article, Classified } from '../types';
-import HeroSlider from '../components/HeroSlider';
-import NewsCard from '../components/NewsCard';
-import { CATEGORIES } from '../constants';
+import { supabase } from '../services/supabaseClient.ts';
+import { Article, Classified } from '../types.ts';
+import HeroSlider from '../components/HeroSlider.tsx';
+import NewsCard from '../components/NewsCard.tsx';
+import { CATEGORIES } from '../constants.tsx';
 
 const Home: React.FC = () => {
   const [articles, setArticles] = useState<Article[]>([]);
@@ -43,7 +43,7 @@ const Home: React.FC = () => {
             <HeroSlider articles={articles} />
           </div>
 
-          {/* Trending Column (Moved to right of slider) */}
+          {/* Trending Column */}
           <div className="lg:col-span-4 h-full">
             <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm h-full flex flex-col">
               <h2 className="text-lg font-black uppercase tracking-tighter mb-6 flex items-center">
@@ -85,7 +85,7 @@ const Home: React.FC = () => {
               ))}
             </div>
 
-            {/* Category Wise News Section (Below Latest) */}
+            {/* Category Wise News Section */}
             {CATEGORIES.slice(0, 4).map(cat => {
               const catArticles = articles.filter(a => a.category === cat.name).slice(0, 3);
               if (!catArticles.length) return null;
@@ -107,7 +107,6 @@ const Home: React.FC = () => {
 
           {/* Sidebar */}
           <div className="lg:col-span-4 space-y-12">
-            {/* Classifieds Section */}
             <div className="bg-white border border-gray-100 shadow-sm p-6 rounded-2xl sticky top-24">
               <h2 className="text-lg font-black uppercase tracking-tighter mb-6 flex items-center">
                 <span className="bg-blue-600 w-2 h-6 mr-3"></span>
