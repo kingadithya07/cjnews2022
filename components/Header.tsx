@@ -1,4 +1,3 @@
-
 // STATUS: STABLE – DO NOT MODIFY
 import React, { useState, useEffect } from 'react';
 import { CATEGORIES } from '../constants.tsx';
@@ -78,16 +77,16 @@ const Header: React.FC = () => {
                 <div className="relative group">
                    <img src={user.avatar} alt="Avatar" className="w-8 h-8 rounded-full border border-gray-200 cursor-pointer object-cover shadow-sm" />
                    <div className="absolute right-0 top-full bg-white border border-gray-100 shadow-xl hidden group-hover:block min-w-[180px] rounded-2xl overflow-hidden mt-2 p-1">
-                      <a href="#/profile" className="flex items-center space-x-2 px-4 py-3 text-xs font-bold hover:bg-gray-50 text-gray-700 rounded-xl transition-colors">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" strokeWidth="2" strokeLinecap="round"/></svg>
-                        <span>My Profile</span>
-                      </a>
                       {[UserRole.ADMIN, UserRole.EDITOR, UserRole.PUBLISHER].includes(user.role) && (
                         <a href="#/admin" className="flex items-center space-x-2 px-4 py-3 text-xs font-bold hover:bg-gray-50 text-gray-700 rounded-xl transition-colors">
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16m-7 6h7" strokeWidth="2" strokeLinecap="round"/></svg>
                           <span>Dashboard</span>
                         </a>
                       )}
+                      <a href="#/profile" className="flex items-center space-x-2 px-4 py-3 text-xs font-bold hover:bg-gray-50 text-gray-700 rounded-xl transition-colors">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" strokeWidth="2" strokeLinecap="round"/></svg>
+                        <span>My Profile</span>
+                      </a>
                       <button onClick={handleLogout} className="flex items-center space-x-2 w-full text-left px-4 py-3 text-xs font-bold hover:bg-red-50 text-red-600 rounded-xl transition-colors">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                         <span>Logout</span>
