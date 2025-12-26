@@ -9,6 +9,8 @@ export enum UserRole {
 export interface Profile {
   id: string;
   name: string;
+  username: string;
+  // Added email property to align with Supabase profile schema and fix Dashboard usage
   email: string;
   role: UserRole;
   avatar?: string;

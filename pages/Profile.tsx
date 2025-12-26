@@ -60,8 +60,8 @@ const ProfilePage: React.FC = () => {
                       alt="Profile Avatar" 
                     />
                   </div>
-                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 rounded-[2.5rem] transition-all flex items-center justify-center pointer-events-none p-4">
-                     <span className="text-white text-[10px] font-black uppercase tracking-widest text-center">Live Preview</span>
+                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 rounded-[2.5rem] transition-all flex items-center justify-center pointer-events-none p-4 text-center">
+                     <span className="text-white text-[10px] font-black uppercase tracking-widest">Digital ID Card</span>
                   </div>
                 </div>
              </div>
@@ -94,7 +94,7 @@ const ProfilePage: React.FC = () => {
                   disabled={saving}
                   className="bg-gray-900 text-white px-10 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-red-600 transition-all shadow-xl shadow-red-600/20 disabled:opacity-50 active:scale-95"
                 >
-                  {saving ? 'Synchronizing...' : 'Update Profile'}
+                  {saving ? 'Synchronizing...' : 'Update Identity'}
                 </button>
               </div>
             </div>
@@ -102,7 +102,7 @@ const ProfilePage: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
               <div className="lg:col-span-7 space-y-8">
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3 ml-1">Full Legal Name</label>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3 ml-1">Professional Display Name</label>
                   <input 
                     type="text" 
                     className="w-full px-6 py-5 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-4 focus:ring-red-600/10 focus:border-red-600 transition-all font-bold text-gray-900"
@@ -112,15 +112,14 @@ const ProfilePage: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3 ml-1">Avatar Display URL</label>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3 ml-1">Avatar Media URL</label>
                   <input 
                     type="text" 
                     className="w-full px-6 py-5 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-4 focus:ring-red-600/10 focus:border-red-600 transition-all font-bold text-gray-900"
                     value={newAvatar}
                     onChange={(e) => setNewAvatar(e.target.value)}
-                    placeholder="Paste your image URL here"
+                    placeholder="Paste image link"
                   />
-                  <p className="mt-3 text-[10px] text-gray-400 font-medium px-1 italic">Note: High-resolution square images (1:1) work best for the platform display.</p>
                 </div>
               </div>
               
@@ -128,26 +127,26 @@ const ProfilePage: React.FC = () => {
                 <div className="bg-gray-50 p-10 rounded-[2.5rem] border border-gray-100 h-full flex flex-col justify-center">
                    <div className="flex items-center space-x-3 mb-8">
                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                     <h4 className="text-[11px] font-black uppercase tracking-widest text-gray-900">Security Credentials</h4>
+                     <h4 className="text-[11px] font-black uppercase tracking-widest text-gray-900">Account Attributes</h4>
                    </div>
                    
                    <div className="space-y-6">
                       <div className="pb-4 border-b border-gray-200">
-                        <span className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Email Address</span>
-                        <span className="text-sm font-bold text-gray-700">{user.email}</span>
+                        <span className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Unique Network Handle</span>
+                        <span className="text-sm font-bold text-gray-700">@{user.username}</span>
                       </div>
                       <div className="pb-4 border-b border-gray-200">
-                        <span className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Access Tier</span>
+                        <span className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Authorization Tier</span>
                         <span className="text-sm font-black text-red-600 uppercase tracking-tighter">{user.role}</span>
                       </div>
                       <div>
-                        <span className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Unique Identifier</span>
+                        <span className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">System UUID</span>
                         <span className="text-[9px] font-mono text-gray-400 break-all">{user.id}</span>
                       </div>
                    </div>
                    
                    <button className="mt-12 w-full py-4 bg-white border border-gray-200 text-gray-900 text-[10px] font-black uppercase tracking-widest rounded-2xl hover:bg-red-600 hover:text-white hover:border-red-600 transition-all shadow-sm">
-                     Reset Account Password
+                     Update Credentials
                    </button>
                 </div>
               </div>

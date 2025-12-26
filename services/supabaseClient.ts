@@ -12,8 +12,11 @@ const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIs
 export const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 class SupabaseService {
-  private isConfigured(): boolean {
-    return !!supabaseClient;
+  /**
+   * Internal helper to map usernames to internal system emails
+   */
+  private usernameToEmail(username: string): string {
+    return `${username.toLowerCase().trim()}@cjnewshub.local`;
   }
 
   async getArticles() {
@@ -119,18 +122,20 @@ class SupabaseService {
     }
   }
 
-  async signUp(email: string, password: string, name: string, role: UserRole) {
+  async signUp(username: string, password: string, name: string, role: UserRole) {
+    const email = this.usernameToEmail(username);
     const { data, error } = await supabaseClient.auth.signUp({
       email,
       password,
       options: {
-        data: { name, role }
+        data: { name, role, username: username.toLowerCase().trim() }
       }
     });
     return { data, error };
   }
 
-  async signIn(email: string, password: string) {
+  async signIn(username: string, password: string) {
+    const email = this.usernameToEmail(username);
     return await supabaseClient.auth.signInWithPassword({ email, password });
   }
 

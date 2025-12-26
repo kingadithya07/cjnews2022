@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../services/supabaseClient.ts';
 
 const Login: React.FC = () => {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -15,17 +15,17 @@ const Login: React.FC = () => {
     e.preventDefault();
     setError(null);
     setLoading(true);
-    const { data, error: loginError } = await supabase.signIn(email, password);
+    const { data, error: loginError } = await supabase.signIn(username, password);
     setLoading(false);
     
     if (loginError) {
-      setError(loginError.message);
+      setError(loginError.message === 'Invalid login credentials' ? 'Invalid username or password' : loginError.message);
       return;
     }
 
     if (data) {
       navigate('/');
-      window.location.reload(); // Refresh to update header state
+      window.location.reload(); 
     }
   };
 
@@ -40,26 +40,31 @@ const Login: React.FC = () => {
         </div>
 
         {error && (
-          <div className="mb-6 p-4 bg-red-50 text-red-600 text-xs font-bold rounded-xl border border-red-100 uppercase tracking-widest">
+          <div className="mb-6 p-4 bg-red-50 text-red-600 text-xs font-bold rounded-xl border border-red-100 uppercase tracking-widest text-center">
             {error}
           </div>
         )}
 
         <form onSubmit={handleLogin} className="space-y-6">
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Email Address</label>
-            <input 
-              type="email" 
-              required
-              className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-red-600 outline-none transition-all"
-              placeholder="name@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
+            <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Unique Username</label>
+            <div className="relative">
+              <input 
+                type="text" 
+                required
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-red-600 outline-none transition-all pl-12"
+                placeholder="journalist_01"
+                value={username}
+                onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/\s/g, ''))}
+              />
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" strokeWidth="2" strokeLinecap="round"/></svg>
+              </div>
+            </div>
           </div>
           <div>
             <div className="flex justify-between items-center mb-2">
-              <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Password</label>
+              <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Access Password</label>
               <a href="#/forgot-password" className="text-[10px] font-bold text-red-600 hover:underline">Forgot?</a>
             </div>
             <div className="relative">
@@ -100,8 +105,8 @@ const Login: React.FC = () => {
         </form>
 
         <div className="mt-8 pt-8 border-t border-gray-50 text-center">
-          <p className="text-gray-400 text-xs">
-            Don't have an account? <a href="#/register" className="text-red-600 font-bold hover:underline">Register Now</a>
+          <p className="text-gray-400 text-xs font-medium">
+            New to the network? <a href="#/register" className="text-red-600 font-bold hover:underline">Register Username</a>
           </p>
         </div>
       </div>
