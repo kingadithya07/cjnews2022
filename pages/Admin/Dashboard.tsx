@@ -65,6 +65,10 @@ const Dashboard: React.FC = () => {
   const [isEditingTaxonomy, setIsEditingTaxonomy] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Partial<Category> | null>(null);
 
+  // Tier Management State
+  const [isEditingTier, setIsEditingTier] = useState(false);
+  const [editingTierUser, setEditingTierUser] = useState<Profile | null>(null);
+
   // General Management State
   const [isEditing, setIsEditing] = useState(false);
   const [editingArticle, setEditingArticle] = useState<Partial<Article> | null>(null);
@@ -203,6 +207,19 @@ const Dashboard: React.FC = () => {
     await supabase.saveCategory(editingCategory);
     setIsEditingTaxonomy(false);
     refreshData();
+  };
+
+  const handleSaveTier = async (newRole: UserRole) => {
+    if (!editingTierUser) return;
+    setIsSaving(true);
+    const { error } = await supabase.updateProfile(editingTierUser.id, { role: newRole });
+    setIsSaving(false);
+    if (error) {
+      alert("Failed to update user role: " + error.message);
+    } else {
+      setIsEditingTier(false);
+      refreshData();
+    }
   };
 
   const filteredArticles = articles.filter(a => 
@@ -400,7 +417,12 @@ const Dashboard: React.FC = () => {
                           <p className="text-[10px] text-gray-400 font-medium line-clamp-1 italic">@{u.username}</p>
                        </div>
                        <div className="absolute top-4 right-6 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button className="text-[9px] font-black uppercase tracking-widest text-gray-400 hover:text-red-600">Edit Tier</button>
+                          <button 
+                            onClick={() => { setEditingTierUser(u); setIsEditingTier(true); }}
+                            className="text-[9px] font-black uppercase tracking-widest text-gray-400 hover:text-red-600"
+                          >
+                            Edit Tier
+                          </button>
                        </div>
                     </div>
                   ))}
@@ -410,6 +432,58 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* USER TIER EDITOR MODAL */}
+      {isEditingTier && editingTierUser && (
+        <div className="fixed inset-0 z-[115] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-gray-900/95 backdrop-blur-lg" onClick={() => setIsEditingTier(false)}></div>
+          <div className="relative bg-white w-full max-w-xl rounded-[3rem] shadow-2xl p-10 overflow-hidden">
+             <div className="text-center mb-8">
+                <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                   <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A10.003 10.003 0 0112 3c1.72 0 3.347.433 4.774 1.2a10.001 10.001 0 014.532 12.408l-.062.113a10.003 10.003 0 01-15.63 3.041m6.438-6.438a1.5 1.5 0 102.122 2.122 1.5 1.5 0 00-2.122-2.122z" strokeWidth="2.5"/></svg>
+                </div>
+                <h2 className="text-2xl font-black uppercase tracking-tighter">Modify <span className="text-red-600">Access Tier</span></h2>
+                <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-1">Configuring permissions for {editingTierUser.name}</p>
+             </div>
+
+             <div className="grid grid-cols-1 gap-4">
+                {[
+                  { role: UserRole.ADMIN, desc: 'Full root access to all system tools & user management.' },
+                  { role: UserRole.PUBLISHER, desc: 'Can publish, edit, and feature news stories and e-paper.' },
+                  { role: UserRole.EDITOR, desc: 'Can create and modify drafts. Review access to news assets.' },
+                  { role: UserRole.READER, desc: 'Public identity with ability to comment and save favorites.' }
+                ].map((tier) => (
+                  <button 
+                    key={tier.role}
+                    onClick={() => handleSaveTier(tier.role)}
+                    disabled={isSaving}
+                    className={`w-full p-6 text-left rounded-[2rem] border-2 transition-all flex items-center gap-6 group ${editingTierUser.role === tier.role ? 'bg-red-600 border-red-600 text-white shadow-xl shadow-red-600/20' : 'bg-gray-50 border-gray-100 hover:border-red-200'}`}
+                  >
+                     <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-xs ${editingTierUser.role === tier.role ? 'bg-white/20 text-white' : 'bg-white text-gray-400 border border-gray-100'}`}>
+                        {tier.role.charAt(0)}
+                     </div>
+                     <div className="flex-1">
+                        <h4 className={`text-[11px] font-black uppercase tracking-widest mb-1 ${editingTierUser.role === tier.role ? 'text-white' : 'text-gray-900'}`}>{tier.role}</h4>
+                        <p className={`text-[9px] font-medium leading-tight ${editingTierUser.role === tier.role ? 'text-white/60' : 'text-gray-400'}`}>{tier.desc}</p>
+                     </div>
+                     {editingTierUser.role === tier.role && (
+                        <svg className="w-5 h-5 text-white animate-bounce-x" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                     )}
+                  </button>
+                ))}
+             </div>
+
+             <div className="mt-8 text-center">
+                <button 
+                  onClick={() => setIsEditingTier(false)}
+                  className="text-gray-400 text-[9px] font-black uppercase tracking-widest hover:text-red-600 transition-colors"
+                >
+                  Cancel & Discard Changes
+                </button>
+             </div>
+          </div>
+        </div>
+      )}
 
       {/* TAXONOMY EDITOR MODAL */}
       {isEditingTaxonomy && editingCategory && (
