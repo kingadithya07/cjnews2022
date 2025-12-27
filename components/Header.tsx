@@ -70,6 +70,14 @@ const Header: React.FC = () => {
             
             {user ? (
               <div className="flex items-center space-x-3">
+                {/* Visible Dashboard Button for authorized roles */}
+                {[UserRole.ADMIN, UserRole.EDITOR, UserRole.PUBLISHER].includes(user.role) && (
+                  <a href="#/admin" className="hidden md:flex items-center px-3 py-1.5 bg-gray-900 text-white rounded-lg hover:bg-red-600 transition-all shadow-md group mr-1">
+                    <svg className="w-3 h-3 mr-1.5 text-gray-400 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16m-7 6h7" strokeWidth="2.5" strokeLinecap="round"/></svg>
+                    <span className="text-[9px] font-black uppercase tracking-widest">Dashboard</span>
+                  </a>
+                )}
+
                 <div className="hidden sm:flex flex-col text-right">
                   <span className="text-xs font-bold text-gray-900">{user.name}</span>
                   <span className="text-[10px] text-gray-500 uppercase tracking-widest">{user.role}</span>
@@ -122,7 +130,15 @@ const Header: React.FC = () => {
                   <img src={user.avatar} className="w-12 h-12 rounded-full" alt="" />
                   <div>
                     <p className="font-black uppercase tracking-tighter text-gray-900">{user.name}</p>
-                    <a href="#/profile" className="text-[10px] font-black uppercase tracking-widest text-red-600">Edit Profile</a>
+                    <div className="flex gap-2 mt-1">
+                        <a href="#/profile" className="text-[10px] font-black uppercase tracking-widest text-red-600">Edit Profile</a>
+                        {[UserRole.ADMIN, UserRole.EDITOR, UserRole.PUBLISHER].includes(user.role) && (
+                            <>
+                                <span className="text-gray-300 text-[10px]">|</span>
+                                <a href="#/admin" className="text-[10px] font-black uppercase tracking-widest text-gray-900">Dashboard</a>
+                            </>
+                        )}
+                    </div>
                   </div>
                </div>
              )}

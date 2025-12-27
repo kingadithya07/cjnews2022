@@ -170,6 +170,36 @@ const ProfilePage: React.FC = () => {
                     placeholder="Enter your full name"
                   />
                 </div>
+
+                {/* NEW: Explicit Avatar Upload Section */}
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3 ml-1">Profile Avatar</label>
+                  <div className="flex items-center space-x-4">
+                    <div className="flex-grow">
+                       <div className="relative">
+                          <input 
+                            type="text" 
+                            className="w-full px-6 py-5 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-4 focus:ring-red-600/10 focus:border-red-600 transition-all font-bold text-gray-900 shadow-inner text-xs"
+                            value={newAvatar ? (newAvatar.length > 50 ? 'Image Data Loaded' : newAvatar) : ''}
+                            readOnly
+                            placeholder="No image selected"
+                          />
+                          {newAvatar && (
+                             <button onClick={() => setNewAvatar('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-600">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                             </button>
+                          )}
+                       </div>
+                    </div>
+                    <button 
+                      onClick={() => fileInputRef.current?.click()}
+                      className="px-6 py-5 bg-gray-900 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-red-600 transition-colors shadow-lg whitespace-nowrap"
+                    >
+                      Upload New
+                    </button>
+                  </div>
+                  <p className="text-[9px] text-gray-400 font-bold mt-2 ml-1">Supports JPG, PNG (Max 2MB)</p>
+                </div>
                 
                 <div className="p-8 bg-red-50 rounded-[2.5rem] border border-red-100">
                   <div className="flex items-center space-x-3 mb-4">
