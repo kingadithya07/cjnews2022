@@ -53,6 +53,11 @@ const Dashboard: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   
+  // Profile Tab State
+  const [profileName, setProfileName] = useState('');
+  const [profileAvatar, setProfileAvatar] = useState('');
+  const profileFileInputRef = useRef<HTMLInputElement>(null);
+
   // Clipping Engine State
   const [isClipping, setIsClipping] = useState(false);
   const [clippingPage, setClippingPage] = useState<EPaperPage | null>(null);
@@ -76,7 +81,13 @@ const Dashboard: React.FC = () => {
   const [newEpaperPage, setNewEpaperPage] = useState({ date: new Date().toISOString().split('T')[0], page_number: 1, image_url: '' });
 
   useEffect(() => {
-    supabase.getCurrentUser().then(res => setUser(res.data));
+    supabase.getCurrentUser().then(res => {
+      setUser(res.data);
+      if (res.data) {
+        setProfileName(res.data.name || '');
+        setProfileAvatar(res.data.avatar || '');
+      }
+    });
     refreshData();
   }, []);
 
@@ -94,6 +105,41 @@ const Dashboard: React.FC = () => {
       setAllUsers(usr.data || []);
       setLoading(false);
     });
+  };
+
+  const handleProfileFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        alert("Image is too large. Please select an image under 2MB.");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProfileAvatar(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleUpdateProfile = async () => {
+    if (!user) return;
+    setIsSaving(true);
+    const { error } = await supabase.updateProfile(user.id, { 
+        name: profileName, 
+        avatar: profileAvatar 
+    });
+    setIsSaving(false);
+    
+    if (error) {
+        alert('Error updating profile: ' + error.message);
+    } else {
+        alert('Profile updated successfully!');
+        const updatedUser = { ...user, name: profileName, avatar: profileAvatar };
+        setUser(updatedUser);
+        // Also update local users list if visible
+        setAllUsers(allUsers.map(u => u.id === user.id ? updatedUser : u));
+    }
   };
 
   const handleOpenClipping = (page: EPaperPage) => {
@@ -267,7 +313,7 @@ const Dashboard: React.FC = () => {
 
         <div className="bg-white rounded-[3rem] shadow-2xl border border-gray-100 overflow-hidden">
           <div className="flex border-b border-gray-100 px-10 bg-white overflow-x-auto hide-scrollbar">
-            {['Articles', 'E-Paper', 'Users', 'Taxonomy'].map(tab => (
+            {['Articles', 'E-Paper', 'Users', 'Taxonomy', 'Profile'].map(tab => (
               <button 
                 key={tab} 
                 onClick={() => setActiveTab(tab.toLowerCase())}
@@ -279,6 +325,79 @@ const Dashboard: React.FC = () => {
           </div>
 
           <div className="p-0 min-h-[500px]">
+            {activeTab === 'profile' && (
+              <div className="p-10 grid grid-cols-1 lg:grid-cols-12 gap-12">
+                <div className="lg:col-span-8 space-y-8">
+                  {/* Avatar Section */}
+                  <div className="flex flex-col md:flex-row items-start gap-8 bg-gray-50 p-8 rounded-[2.5rem] border border-gray-100">
+                      <div 
+                        className="relative group cursor-pointer w-32 h-32 flex-shrink-0"
+                        onClick={() => profileFileInputRef.current?.click()}
+                      >
+                        <img src={profileAvatar || 'https://via.placeholder.com/150'} className="w-full h-full rounded-[2rem] object-cover shadow-lg border-4 border-white" alt="Profile" />
+                        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 rounded-[2rem] flex items-center justify-center transition-all">
+                            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        </div>
+                        <input ref={profileFileInputRef} type="file" hidden accept="image/*" onChange={handleProfileFileChange} />
+                      </div>
+                      <div className="flex-grow pt-2">
+                        <h3 className="text-xl font-black uppercase tracking-tighter text-gray-900 mb-2">Public Identity</h3>
+                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest leading-relaxed mb-4 max-w-md">
+                          This image is displayed next to your published articles and comments across the network.
+                        </p>
+                        <button onClick={() => profileFileInputRef.current?.click()} className="px-5 py-2 bg-white border border-gray-200 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-gray-100">Change Photo</button>
+                      </div>
+                  </div>
+
+                  {/* Name Section */}
+                  <div>
+                    <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3 ml-2">Display Name</label>
+                    <input 
+                      type="text" 
+                      className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-[2rem] outline-none focus:ring-4 focus:ring-red-600/10 focus:border-red-600 font-black text-lg transition-all"
+                      value={profileName}
+                      onChange={e => setProfileName(e.target.value)}
+                    />
+                  </div>
+
+                  <button 
+                    onClick={handleUpdateProfile}
+                    disabled={isSaving}
+                    className="w-full py-5 bg-gray-900 text-white rounded-[2rem] font-black uppercase text-[10px] tracking-widest shadow-xl shadow-gray-900/20 hover:bg-red-600 hover:shadow-red-600/20 transition-all active:scale-95 disabled:opacity-50"
+                  >
+                    {isSaving ? 'Updating Profile...' : 'Save Profile Changes'}
+                  </button>
+                </div>
+
+                <div className="lg:col-span-4">
+                  <div className="bg-gray-900 text-white p-10 rounded-[2.5rem] shadow-2xl h-full">
+                      <h4 className="text-[11px] font-black uppercase tracking-widest text-white/50 mb-8 border-b border-white/10 pb-4">Account Metadata</h4>
+                      <div className="space-y-8">
+                        <div>
+                            <span className="block text-[9px] font-bold text-white/30 uppercase tracking-widest mb-1">Network Username</span>
+                            <p className="text-lg font-bold">@{user.username}</p>
+                        </div>
+                        <div>
+                            <span className="block text-[9px] font-bold text-white/30 uppercase tracking-widest mb-1">Access Role</span>
+                            <span className="bg-red-600 text-white px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest">{user.role}</span>
+                        </div>
+                        <div>
+                            <span className="block text-[9px] font-bold text-white/30 uppercase tracking-widest mb-1">Verification Status</span>
+                            <div className="flex items-center space-x-2 mt-1">
+                              <div className={`w-2 h-2 rounded-full ${user.is_verified ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
+                              <span className="text-sm font-bold">{user.is_verified ? 'Verified Journalist' : 'Pending Verification'}</span>
+                            </div>
+                        </div>
+                        <div className="pt-8 border-t border-white/10">
+                            <span className="block text-[9px] font-bold text-white/30 uppercase tracking-widest mb-1">System UUID</span>
+                            <p className="text-[10px] font-mono text-white/40 break-all">{user.id}</p>
+                        </div>
+                      </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {activeTab === 'articles' && (
               <div className="overflow-x-auto">
                 <table className="w-full text-left">

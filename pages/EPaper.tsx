@@ -18,6 +18,12 @@ const EPaper: React.FC = () => {
   const [cropperInstance, setCropperInstance] = useState<Cropper | null>(null);
   const cropImageRef = useRef<HTMLImageElement>(null);
 
+  // Watermark State
+  const [watermarkType, setWatermarkType] = useState<'TEXT' | 'IMAGE'>('TEXT');
+  const [watermarkText, setWatermarkText] = useState('CJNEWS HUB DIGITAL ARCHIVE');
+  const [watermarkImage, setWatermarkImage] = useState<string | null>(null);
+  const watermarkFileInputRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     setLoading(true);
     supabase.getEPaperPages(selectedDate).then(res => {
@@ -69,14 +75,29 @@ const EPaper: React.FC = () => {
     }
   }, [isClipModalOpen, clippingRegion]);
 
-  const handleDownloadClip = () => {
+  const handleWatermarkImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+        if (file.size > 2 * 1024 * 1024) {
+             alert("Image too large. Please use a file smaller than 2MB.");
+             return;
+        }
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            setWatermarkImage(ev.target?.result as string);
+        };
+        reader.readAsDataURL(file);
+    }
+  };
+
+  const handleDownloadClip = async () => {
     if (!cropperInstance || !currentPage) return;
     
     const croppedCanvas = (cropperInstance as any).getCroppedCanvas();
     if (!croppedCanvas) return;
 
     // Create a NEW canvas with a watermark strip at the bottom
-    const stripHeight = 40;
+    const stripHeight = 60;
     const finalCanvas = document.createElement('canvas');
     finalCanvas.width = croppedCanvas.width;
     finalCanvas.height = croppedCanvas.height + stripHeight;
@@ -87,21 +108,52 @@ const EPaper: React.FC = () => {
       ctx.drawImage(croppedCanvas, 0, 0);
 
       // 2. Draw the strip background
-      ctx.fillStyle = '#111827'; // Tailwind gray-900
+      ctx.fillStyle = '#0f172a'; // Slate-900 (Darker)
       ctx.fillRect(0, croppedCanvas.height, finalCanvas.width, stripHeight);
 
-      // 3. Draw Watermark Text
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 12px Inter, sans-serif';
-      ctx.textAlign = 'left';
-      ctx.fillText('CJNEWS HUB DIGITAL ARCHIVE', 15, croppedCanvas.height + 25);
+      // 3. Draw Watermark Content
+      if (watermarkType === 'IMAGE' && watermarkImage) {
+        await new Promise<void>((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+                const maxH = stripHeight - 20;
+                const ratio = img.width / img.height;
+                const drawW = maxH * ratio;
+                const drawH = maxH;
+                ctx.drawImage(img, 20, croppedCanvas.height + 10, drawW, drawH);
+                resolve();
+            };
+            img.onerror = () => resolve(); // proceed even if image fails
+            img.src = watermarkImage;
+        });
+      } else {
+        // Text Mode
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '900 24px Inter, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        
+        // Adjust font size if canvas is small
+        if (finalCanvas.width < 500) ctx.font = '900 16px Inter, sans-serif';
+        
+        ctx.fillText(watermarkText.toUpperCase(), 20, croppedCanvas.height + (stripHeight / 2));
+      }
 
-      // 4. Draw Date and Page
-      ctx.fillStyle = '#ef4444'; // Tailwind red-500
+      // 4. Draw Date and Page (Right Aligned)
       ctx.textAlign = 'right';
+      ctx.textBaseline = 'alphabetic';
+      
+      ctx.fillStyle = '#ef4444'; // Red-500
+      ctx.font = 'bold 12px Inter, sans-serif';
+      if (finalCanvas.width < 500) ctx.font = 'bold 10px Inter, sans-serif';
+      
+      const dateText = `${selectedDate} • Page ${currentPage.page_number}`.toUpperCase();
+      ctx.fillText(dateText, finalCanvas.width - 20, croppedCanvas.height + 24);
+
+      ctx.fillStyle = '#94a3b8'; // Slate-400
       ctx.font = 'bold 10px Inter, sans-serif';
-      const infoText = `${selectedDate} | Page ${currentPage.page_number} | cjnewshub.com`;
-      ctx.fillText(infoText.toUpperCase(), finalCanvas.width - 15, croppedCanvas.height + 25);
+      if (finalCanvas.width < 500) ctx.font = 'bold 8px Inter, sans-serif';
+      ctx.fillText("CJNEWSHUB.COM", finalCanvas.width - 20, croppedCanvas.height + 42);
 
       // 5. Download
       const link = document.createElement('a');
@@ -273,7 +325,7 @@ const EPaper: React.FC = () => {
       {isClipModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-10">
           <div className="absolute inset-0 bg-gray-900/90 backdrop-blur-md" onClick={() => setIsClipModalOpen(false)}></div>
-          <div className="relative bg-white w-full max-w-5xl h-full max-h-[85vh] rounded-[3.5rem] shadow-2xl overflow-hidden flex flex-col">
+          <div className="relative bg-white w-full max-w-5xl h-full max-h-[90vh] rounded-[3.5rem] shadow-2xl overflow-hidden flex flex-col">
             <div className="px-10 py-6 border-b border-gray-100 flex justify-between items-center bg-white">
               <div className="flex items-center space-x-3">
                  <div className="w-10 h-10 bg-red-50 rounded-2xl flex items-center justify-center">
@@ -293,24 +345,56 @@ const EPaper: React.FC = () => {
                <div className="w-full h-full max-w-full max-h-full">
                   <img ref={cropImageRef} src={currentPage.image_url} alt="Clip area" className="max-w-full" />
                </div>
-               <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-gray-900/80 backdrop-blur-xl px-6 py-2 rounded-full border border-white/10 z-20">
+               <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-gray-900/80 backdrop-blur-xl px-6 py-2 rounded-full border border-white/10 z-20 pointer-events-none">
                   <p className="text-[9px] font-black uppercase text-white tracking-widest whitespace-nowrap">Adjust borders to frame your clip</p>
                </div>
             </div>
 
-            <div className="p-10 bg-white border-t border-gray-100 flex flex-col md:flex-row gap-6 justify-between items-center">
-              <button 
-                onClick={handleDownloadClip}
-                className="w-full md:w-auto px-16 py-4 bg-gray-900 text-white rounded-[2rem] font-black uppercase text-[10px] tracking-widest hover:bg-red-600 transition-all shadow-xl shadow-gray-900/20 active:scale-95"
-              >
-                Capture & Download Archive
-              </button>
-              <button 
-                onClick={() => setIsClipModalOpen(false)}
-                className="w-full md:w-auto px-10 py-4 text-gray-400 font-black uppercase text-[9px] tracking-widest hover:text-gray-900 transition-colors"
-              >
-                Cancel Process
-              </button>
+            <div className="p-8 bg-white border-t border-gray-100 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+              <div className="lg:col-span-8 space-y-4">
+                 <div className="flex items-center space-x-4 mb-2">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Watermark Mode:</span>
+                    <div className="flex bg-gray-100 rounded-lg p-1">
+                       <button onClick={() => setWatermarkType('TEXT')} className={`px-4 py-1.5 rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${watermarkType === 'TEXT' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-400 hover:text-gray-600'}`}>Text Label</button>
+                       <button onClick={() => setWatermarkType('IMAGE')} className={`px-4 py-1.5 rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${watermarkType === 'IMAGE' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-400 hover:text-gray-600'}`}>Logo Image</button>
+                    </div>
+                 </div>
+                 
+                 {watermarkType === 'TEXT' ? (
+                   <input 
+                     type="text" 
+                     className="w-full px-5 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-red-600 font-bold text-xs"
+                     placeholder="Enter custom footer text..."
+                     value={watermarkText}
+                     onChange={(e) => setWatermarkText(e.target.value)}
+                   />
+                 ) : (
+                   <div className="flex items-center space-x-4">
+                     <button onClick={() => watermarkFileInputRef.current?.click()} className="px-5 py-3 bg-gray-50 border border-gray-100 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-100 transition-colors flex-grow text-left flex justify-between items-center">
+                        <span className="truncate">{watermarkImage ? 'Image Selected (Click to change)' : 'Select Watermark Image...'}</span>
+                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                     </button>
+                     <input ref={watermarkFileInputRef} type="file" hidden accept="image/*" onChange={handleWatermarkImageChange} />
+                     {watermarkImage && <img src={watermarkImage} className="w-10 h-10 object-contain bg-gray-100 rounded-lg border border-gray-200" alt="Preview" />}
+                   </div>
+                 )}
+              </div>
+
+              <div className="lg:col-span-4 flex flex-col gap-3">
+                 <button 
+                  onClick={handleDownloadClip}
+                  className="w-full py-4 bg-gray-900 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-red-600 transition-all shadow-xl shadow-gray-900/20 active:scale-95 flex items-center justify-center space-x-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  <span>Download Clip</span>
+                </button>
+                <button 
+                  onClick={() => setIsClipModalOpen(false)}
+                  className="w-full py-3 text-gray-400 font-black uppercase text-[9px] tracking-widest hover:text-gray-900 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           </div>
         </div>
